@@ -4,25 +4,47 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-dispatcher"
-version = "0.1.0"
-description = "Intelligent LLM dispatching with performance-based routing and fallback mechanisms"
+version = "1.0.0"
+description = "Intelligent LLM dispatching with performance-based routing, multimodal support, streaming, monitoring, and comprehensive analytics"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
     {name = "ashhadahsan", email = "ashhadahsan@gmail.com"}
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 requires-python = ">=3.8"
+keywords = [
+    "llm",
+    "ai",
+    "openai",
+    "anthropic",
+    "google",
+    "machine-learning",
+    "nlp",
+    "routing",
+    "dispatch",
+    "multimodal",
+    "streaming",
+    "monitoring",
+    "analytics",
+    "caching",
+]
 dependencies = [
     "pydantic>=2.0.0",
     "requests>=2.31.0",

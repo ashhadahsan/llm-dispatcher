@@ -7,7 +7,7 @@ about which LLM to use based on performance metrics, cost optimization, and othe
 
 import asyncio
 import time
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
@@ -415,6 +415,258 @@ class LLMSwitch:
 
             # All options failed
             raise RuntimeError("All LLM options failed")
+
+    async def execute_stream(
+        self,
+        request: TaskRequest,
+        chunk_callback: Optional[callable] = None,
+        metadata_callback: Optional[callable] = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Execute a request with streaming response.
+
+        Args:
+            request: The task request to execute
+            chunk_callback: Optional callback for processing chunks
+            metadata_callback: Optional callback for receiving metadata
+
+        Yields:
+            str: Streaming response chunks
+        """
+        decision = self.select_llm(request)
+        if not decision:
+            raise ValueError("No suitable LLM found for the request")
+
+        provider = self._get_provider(decision.provider)
+        if not provider:
+            raise ValueError(f"Provider {decision.provider} not found")
+
+        start_time = time.time()
+        total_tokens = 0
+        chunk_count = 0
+
+        try:
+            async for chunk in provider.generate_stream(request):
+                chunk_count += 1
+
+                # Process chunk through callback if provided
+                if chunk_callback:
+                    processed_chunk = chunk_callback(chunk, chunk_count)
+                    if processed_chunk is not None:
+                        chunk = processed_chunk
+
+                yield chunk
+
+                # Estimate tokens (rough approximation)
+                if isinstance(chunk, str):
+                    total_tokens += len(chunk.split())
+
+                # Send metadata if callback provided
+                if metadata_callback and chunk_count % 10 == 0:  # Every 10 chunks
+                    metadata = {
+                        "chunk_count": chunk_count,
+                        "estimated_tokens": total_tokens,
+                        "provider": decision.provider,
+                        "model": decision.model,
+                        "elapsed_time": time.time() - start_time,
+                    }
+                    metadata_callback(metadata)
+
+            # Record final performance
+            end_time = time.time()
+            latency = (end_time - start_time) * 1000
+            cost = provider.estimate_cost(request, total_tokens)
+
+            self._record_performance(
+                decision.provider, decision.model, 1.0  # Success score
+            )
+            self.performance_monitor.record_request(
+                decision.provider, decision.model, latency, True
+            )
+
+        except Exception as e:
+            logger.error(f"Streaming execution failed: {e}")
+
+            # Try fallback providers
+            for fallback_provider, fallback_model in decision.fallback_options:
+                try:
+                    provider = self._get_provider(fallback_provider)
+                    if provider:
+                        logger.info(f"Trying fallback provider: {fallback_provider}")
+
+                        # Reset counters for fallback
+                        start_time = time.time()
+                        total_tokens = 0
+                        chunk_count = 0
+
+                        async for chunk in provider.generate_stream(request):
+                            chunk_count += 1
+
+                            if chunk_callback:
+                                processed_chunk = chunk_callback(chunk, chunk_count)
+                                if processed_chunk is not None:
+                                    chunk = processed_chunk
+
+                            yield chunk
+
+                            if isinstance(chunk, str):
+                                total_tokens += len(chunk.split())
+
+                        # Record fallback performance
+                        end_time = time.time()
+                        latency = (end_time - start_time) * 1000
+
+                        self._record_performance(
+                            fallback_provider,
+                            fallback_model,
+                            0.8,  # Fallback success score
+                        )
+                        self.performance_monitor.record_request(
+                            fallback_provider, fallback_model, latency, True
+                        )
+                        return
+
+                except Exception as fallback_error:
+                    logger.warning(
+                        f"Fallback provider {fallback_provider} also failed: {fallback_error}"
+                    )
+                    continue
+
+            raise Exception(f"All providers failed for streaming request: {e}")
+
+    async def execute_stream_with_metadata(
+        self,
+        request: TaskRequest,
+        include_timing: bool = True,
+        include_tokens: bool = True,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Execute streaming request with detailed metadata.
+
+        Args:
+            request: The task request to execute
+            include_timing: Whether to include timing information
+            include_tokens: Whether to include token estimation
+
+        Yields:
+            Dict containing chunk data and metadata
+        """
+        decision = self.select_llm(request)
+        if not decision:
+            raise ValueError("No suitable LLM found for the request")
+
+        provider = self._get_provider(decision.provider)
+        if not provider:
+            raise ValueError(f"Provider {decision.provider} not found")
+
+        start_time = time.time()
+        total_tokens = 0
+        chunk_count = 0
+
+        try:
+            async for chunk in provider.generate_stream(request):
+                chunk_count += 1
+
+                metadata = {
+                    "chunk": chunk,
+                    "chunk_index": chunk_count,
+                    "provider": decision.provider,
+                    "model": decision.model,
+                }
+
+                if include_timing:
+                    metadata["elapsed_time"] = time.time() - start_time
+
+                if include_tokens and isinstance(chunk, str):
+                    chunk_tokens = len(chunk.split())
+                    total_tokens += chunk_tokens
+                    metadata["chunk_tokens"] = chunk_tokens
+                    metadata["total_tokens"] = total_tokens
+
+                yield metadata
+
+            # Final metadata
+            end_time = time.time()
+            final_metadata = {
+                "chunk": None,  # Signal end of stream
+                "chunk_index": chunk_count,
+                "provider": decision.provider,
+                "model": decision.model,
+                "total_chunks": chunk_count,
+                "total_tokens": total_tokens,
+                "total_time": end_time - start_time,
+                "finish_reason": "completed",
+            }
+            yield final_metadata
+
+        except Exception as e:
+            logger.error(f"Streaming execution failed: {e}")
+
+            # Try fallback providers
+            for fallback_provider, fallback_model in decision.fallback_options:
+                try:
+                    provider = self._get_provider(fallback_provider)
+                    if provider:
+                        logger.info(f"Trying fallback provider: {fallback_provider}")
+
+                        # Reset for fallback
+                        start_time = time.time()
+                        total_tokens = 0
+                        chunk_count = 0
+
+                        async for chunk in provider.generate_stream(request):
+                            chunk_count += 1
+
+                            metadata = {
+                                "chunk": chunk,
+                                "chunk_index": chunk_count,
+                                "provider": fallback_provider,
+                                "model": fallback_model,
+                            }
+
+                            if include_timing:
+                                metadata["elapsed_time"] = time.time() - start_time
+
+                            if include_tokens and isinstance(chunk, str):
+                                chunk_tokens = len(chunk.split())
+                                total_tokens += chunk_tokens
+                                metadata["chunk_tokens"] = chunk_tokens
+                                metadata["total_tokens"] = total_tokens
+
+                            yield metadata
+
+                        # Final fallback metadata
+                        end_time = time.time()
+                        final_metadata = {
+                            "chunk": None,
+                            "chunk_index": chunk_count,
+                            "provider": fallback_provider,
+                            "model": fallback_model,
+                            "total_chunks": chunk_count,
+                            "total_tokens": total_tokens,
+                            "total_time": end_time - start_time,
+                            "finish_reason": "completed_fallback",
+                        }
+                        yield final_metadata
+                        return
+
+                except Exception as fallback_error:
+                    logger.warning(
+                        f"Fallback provider {fallback_provider} also failed: {fallback_error}"
+                    )
+                    continue
+
+            # Error metadata
+            error_metadata = {
+                "chunk": None,
+                "chunk_index": chunk_count,
+                "provider": decision.provider,
+                "model": decision.model,
+                "error": str(e),
+                "finish_reason": "error",
+            }
+            yield error_metadata
+            raise Exception(f"All providers failed for streaming request: {e}")
 
     def _record_performance(self, provider: str, model: str, score: float):
         """Record performance for a model."""

@@ -421,3 +421,145 @@ def performance_optimized(**kwargs) -> LLMSwitchDecorator:
     return llm_dispatcher(
         optimization_strategy=OptimizationStrategy.PERFORMANCE, **kwargs
     )
+
+
+def llm_stream(
+    task_type: Optional[TaskType] = None,
+    optimization_strategy: OptimizationStrategy = OptimizationStrategy.BALANCED,
+    max_cost: Optional[float] = None,
+    max_latency: Optional[int] = None,
+    providers: Optional[List[str]] = None,
+    model: Optional[str] = None,
+    chunk_callback: Optional[callable] = None,
+    metadata_callback: Optional[callable] = None,
+    **kwargs,
+) -> Callable[[F], F]:
+    """
+    Decorator for streaming LLM responses.
+
+    Args:
+        task_type: Type of task (auto-detected if not provided)
+        optimization_strategy: Strategy for optimization (cost, speed, balanced)
+        max_cost: Maximum cost per request
+        max_latency: Maximum latency in milliseconds
+        providers: List of preferred providers
+        model: Specific model to use
+        chunk_callback: Optional callback for processing chunks
+        metadata_callback: Optional callback for receiving metadata
+        **kwargs: Additional configuration options
+
+    Returns:
+        Decorated function that yields streaming responses
+
+    Example:
+        @llm_stream(task_type=TaskType.TEXT_GENERATION)
+        async def stream_text(prompt: str):
+            async for chunk in _stream_generator():
+                yield chunk
+    """
+
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        async def streaming_wrapper(*args, **kwargs):
+            # Get global switch instance
+            switch = get_global_switch()
+            if not switch:
+                raise RuntimeError(
+                    "LLM-Dispatcher not initialized. Call llm_dispatcher.init() first."
+                )
+
+            # Detect task type if not specified
+            detected_task_type = task_type or _detect_task_type(func, args, kwargs)
+
+            # Prepare request
+            request = _prepare_request(func, args, kwargs, detected_task_type)
+
+            # Set constraints
+            constraints = {
+                "max_cost": max_cost,
+                "max_latency": max_latency,
+                "providers": providers,
+                "model": model,
+            }
+            constraints = {k: v for k, v in constraints.items() if v is not None}
+
+            # Execute streaming
+            async for chunk in switch.execute_stream(
+                request, chunk_callback, metadata_callback
+            ):
+                yield chunk
+
+        return cast(F, streaming_wrapper)
+
+    return decorator
+
+
+def llm_stream_with_metadata(
+    task_type: Optional[TaskType] = None,
+    optimization_strategy: OptimizationStrategy = OptimizationStrategy.BALANCED,
+    max_cost: Optional[float] = None,
+    max_latency: Optional[int] = None,
+    providers: Optional[List[str]] = None,
+    model: Optional[str] = None,
+    include_timing: bool = True,
+    include_tokens: bool = True,
+    **kwargs,
+) -> Callable[[F], F]:
+    """
+    Decorator for streaming LLM responses with detailed metadata.
+
+    Args:
+        task_type: Type of task (auto-detected if not provided)
+        optimization_strategy: Strategy for optimization (cost, speed, balanced)
+        max_cost: Maximum cost per request
+        max_latency: Maximum latency in milliseconds
+        providers: List of preferred providers
+        model: Specific model to use
+        include_timing: Whether to include timing information
+        include_tokens: Whether to include token estimation
+        **kwargs: Additional configuration options
+
+    Returns:
+        Decorated function that yields streaming responses with metadata
+
+    Example:
+        @llm_stream_with_metadata(task_type=TaskType.TEXT_GENERATION)
+        async def stream_text_with_metadata(prompt: str):
+            async for metadata in _stream_generator():
+                yield metadata
+    """
+
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        async def streaming_metadata_wrapper(*args, **kwargs):
+            # Get global switch instance
+            switch = get_global_switch()
+            if not switch:
+                raise RuntimeError(
+                    "LLM-Dispatcher not initialized. Call llm_dispatcher.init() first."
+                )
+
+            # Detect task type if not specified
+            detected_task_type = task_type or _detect_task_type(func, args, kwargs)
+
+            # Prepare request
+            request = _prepare_request(func, args, kwargs, detected_task_type)
+
+            # Set constraints
+            constraints = {
+                "max_cost": max_cost,
+                "max_latency": max_latency,
+                "providers": providers,
+                "model": model,
+            }
+            constraints = {k: v for k, v in constraints.items() if v is not None}
+
+            # Execute streaming with metadata
+            async for metadata in switch.execute_stream_with_metadata(
+                request, include_timing, include_tokens
+            ):
+                yield metadata
+
+        return cast(F, streaming_metadata_wrapper)
+
+    return decorator
