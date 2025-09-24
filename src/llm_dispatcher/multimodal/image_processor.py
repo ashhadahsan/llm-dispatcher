@@ -112,7 +112,8 @@ class ImageProcessor:
         target_format: ImageFormat = ImageFormat.JPEG,
         max_dimension: int = 2048,
         quality: ImageQuality = ImageQuality.MEDIUM,
-    ) -> Tuple[str, ImageMetadata]:
+        resize: Optional[Tuple[int, int]] = None,
+    ) -> Tuple[bytes, ImageMetadata]:
         """Process and optimize image for LLM consumption."""
         start_time = datetime.now()
 
@@ -143,6 +144,10 @@ class ImageProcessor:
         if max(image.size) > max_dimension:
             image = self._resize_image(image, max_dimension)
 
+        # Apply specific resize if requested
+        if resize:
+            image = image.resize(resize, Image.Resampling.LANCZOS)
+
         # Apply quality optimizations
         if quality == ImageQuality.LOW:
             image = self._apply_low_quality_optimizations(image)
@@ -158,15 +163,16 @@ class ImageProcessor:
         save_kwargs = self._get_save_kwargs(target_format, quality)
         image.save(output_buffer, format=target_format.value.upper(), **save_kwargs)
 
-        # Encode to base64
+        # Get processed bytes
         processed_bytes = output_buffer.getvalue()
-        processed_base64 = base64.b64encode(processed_bytes).decode("utf-8")
 
         # Generate metadata
-        metadata = self._generate_metadata(image, processed_bytes, start_time)
+        metadata = self._generate_metadata(
+            image, processed_bytes, start_time, target_format
+        )
 
         logger.debug(f"Processed image: {image.size} -> {processed_bytes} bytes")
-        return processed_base64, metadata
+        return processed_bytes, metadata
 
     def _resize_image(self, image: Image.Image, max_dimension: int) -> Image.Image:
         """Resize image while maintaining aspect ratio."""
@@ -265,7 +271,11 @@ class ImageProcessor:
         return kwargs
 
     def _generate_metadata(
-        self, image: Image.Image, processed_bytes: bytes, start_time: datetime
+        self,
+        image: Image.Image,
+        processed_bytes: bytes,
+        start_time: datetime,
+        target_format: ImageFormat,
     ) -> ImageMetadata:
         """Generate comprehensive image metadata."""
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
@@ -290,7 +300,7 @@ class ImageProcessor:
         return ImageMetadata(
             width=width,
             height=height,
-            format=image.format or "UNKNOWN",
+            format=target_format.value.upper(),
             size_bytes=len(processed_bytes),
             color_mode=color_mode,
             has_transparency=has_transparency,
@@ -497,3 +507,91 @@ class ImageProcessor:
         except Exception as e:
             logger.error(f"Error calculating complexity score: {e}")
             return 0.5  # Default moderate complexity
+
+    def _calculate_complexity_score(self, image: Image.Image) -> float:
+        """Calculate complexity score for an Image object."""
+        try:
+            gray_image = image.convert("L")
+            img_array = np.array(gray_image)
+
+            # Calculate edge density (complexity indicator)
+            diff_x = np.diff(img_array, axis=1)
+            diff_y = np.diff(img_array, axis=0)
+            edge_density = (np.mean(np.abs(diff_x)) + np.mean(np.abs(diff_y))) / 255.0
+
+            # Calculate color variance (another complexity indicator)
+            if image.mode == "RGB":
+                rgb_array = np.array(image)
+                color_variance = np.var(rgb_array) / (255**2)
+            else:
+                color_variance = 0.1  # Default for grayscale
+
+            # Combine metrics
+            complexity_score = (edge_density * 0.7) + (color_variance * 0.3)
+
+            return min(complexity_score, 1.0)
+
+        except Exception as e:
+            logger.error(f"Error calculating complexity score: {e}")
+            return 0.5  # Default moderate complexity
+
+    def extract_image_features(self, image_data: bytes) -> Dict[str, Any]:
+        """Extract features from an image for analysis."""
+        try:
+            image = Image.open(io.BytesIO(image_data))
+
+            # Basic features
+            features = {
+                "dimensions": [image.width, image.height],
+                "width": image.width,
+                "height": image.height,
+                "format": image.format,
+                "mode": image.mode,
+                "has_transparency": image.mode in ("RGBA", "LA")
+                or "transparency" in image.info,
+                "aspect_ratio": image.width / image.height if image.height > 0 else 1.0,
+            }
+
+            # Color analysis
+            if image.mode == "RGB":
+                rgb_array = np.array(image)
+                features.update(
+                    {
+                        "mean_r": float(np.mean(rgb_array[:, :, 0])),
+                        "mean_g": float(np.mean(rgb_array[:, :, 1])),
+                        "mean_b": float(np.mean(rgb_array[:, :, 2])),
+                        "color_variance": float(np.var(rgb_array)),
+                        "brightness": float(np.mean(rgb_array)),
+                        "contrast": float(np.std(rgb_array)),
+                    }
+                )
+            else:
+                # For grayscale images
+                gray_array = np.array(image.convert("L"))
+                features.update(
+                    {
+                        "brightness": float(np.mean(gray_array)),
+                        "contrast": float(np.std(gray_array)),
+                    }
+                )
+
+            # Complexity analysis
+            features["complexity_score"] = self._calculate_complexity_score(image)
+
+            return features
+
+        except Exception as e:
+            logger.error(f"Error extracting image features: {e}")
+            return {
+                "error": str(e),
+                "dimensions": [0, 0],
+                "width": 0,
+                "height": 0,
+                "format": "unknown",
+                "mode": "unknown",
+                "has_transparency": False,
+                "aspect_ratio": 1.0,
+                "brightness": 0.0,
+                "contrast": 0.0,
+                "complexity_score": 0.5,
+            }

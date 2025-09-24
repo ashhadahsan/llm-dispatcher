@@ -137,7 +137,7 @@ class TestOpenAIExamples:
         request = TaskRequest(
             prompt="Generate a JSON object with information about Python programming",
             task_type=TaskType.TEXT_GENERATION,
-            structured_output=True,
+            structured_output={"type": "json_object"},
             temperature=0.5,
         )
 

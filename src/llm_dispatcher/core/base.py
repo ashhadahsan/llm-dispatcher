@@ -7,7 +7,7 @@ the LLM-Dispatcher package, including task types, capabilities, and provider int
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, AsyncGenerator
+from typing import Any, Dict, List, Optional, Union, AsyncGenerator, Type
 from pydantic import BaseModel, Field
 import asyncio
 from datetime import datetime
@@ -71,7 +71,7 @@ class TaskRequest(BaseModel):
     presence_penalty: float = 0.0
     images: Optional[List[str]] = None  # Base64 encoded images
     audio: Optional[str] = None  # Base64 encoded audio
-    structured_output: Optional[Dict[str, Any]] = None
+    structured_output: Optional[Union[Dict[str, Any], Type[BaseModel]]] = None
     functions: Optional[List[Dict[str, Any]]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
@@ -175,6 +175,7 @@ class LLMProvider(ABC):
     def _initialize_performance_metrics(self) -> None:
         """Initialize performance metrics for each model."""
         # This will be overridden by specific providers with real benchmark data
+        # Default implementation - do nothing
         pass
 
     @abstractmethod

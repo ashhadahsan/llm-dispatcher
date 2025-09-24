@@ -27,6 +27,8 @@ from llm_dispatcher.multimodal import (
     MediaValidator,
     MediaType,
     ValidationSeverity,
+    ValidationIssue,
+    ValidationResult,
 )
 
 
@@ -51,7 +53,7 @@ class TestImageProcessor:
         is_valid, message = processor.validate_image(img_data)
 
         assert is_valid
-        assert "successful" in message
+        assert "valid" in message
 
     def test_validate_image_too_large(self):
         """Test image validation with oversized image."""

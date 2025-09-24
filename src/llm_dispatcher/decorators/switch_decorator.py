@@ -17,6 +17,7 @@ from ..config.settings import SwitchConfig, OptimizationStrategy
 from ..providers.openai_provider import OpenAIProvider
 from ..providers.anthropic_provider import AnthropicProvider
 from ..providers.google_provider import GoogleProvider
+from ..providers.grok_provider import GrokProvider
 
 logger = logging.getLogger(__name__)
 
@@ -316,6 +317,7 @@ def init(
     openai_api_key: Optional[str] = None,
     anthropic_api_key: Optional[str] = None,
     google_api_key: Optional[str] = None,
+    grok_api_key: Optional[str] = None,
     config: Optional[SwitchConfig] = None,
     **provider_kwargs,
 ) -> LLMSwitch:
@@ -326,6 +328,7 @@ def init(
         openai_api_key: OpenAI API key
         anthropic_api_key: Anthropic API key
         google_api_key: Google API key
+        grok_api_key: Grok API key
         config: Switch configuration
         **provider_kwargs: Additional provider configuration
 
@@ -336,7 +339,8 @@ def init(
         llm_dispatcher.init(
             openai_api_key="sk-...",
             anthropic_api_key="sk-ant-...",
-            google_api_key="..."
+            google_api_key="...",
+            grok_api_key="..."
         )
     """
     global _global_switch
@@ -357,6 +361,11 @@ def init(
     if google_api_key:
         providers["google"] = GoogleProvider(
             google_api_key, **provider_kwargs.get("google", {})
+        )
+
+    if grok_api_key:
+        providers["grok"] = GrokProvider(
+            grok_api_key, **provider_kwargs.get("grok", {})
         )
 
     if not providers:
@@ -423,6 +432,99 @@ def performance_optimized(**kwargs) -> LLMSwitchDecorator:
     )
 
 
+def _detect_task_type(func: Callable, args: tuple, kwargs: dict) -> TaskType:
+    """Standalone function to detect task type from function name and parameters."""
+    func_name = func.__name__.lower()
+
+    # Simple task type detection based on function name
+    if any(
+        keyword in func_name for keyword in ["generate", "write", "create", "compose"]
+    ):
+        return TaskType.TEXT_GENERATION
+    elif any(
+        keyword in func_name for keyword in ["code", "program", "script", "function"]
+    ):
+        return TaskType.CODE_GENERATION
+    elif any(keyword in func_name for keyword in ["translate", "convert"]):
+        return TaskType.TRANSLATION
+    elif any(keyword in func_name for keyword in ["summarize", "summary"]):
+        return TaskType.SUMMARIZATION
+    elif any(keyword in func_name for keyword in ["answer", "question", "qa"]):
+        return TaskType.QUESTION_ANSWERING
+    elif any(keyword in func_name for keyword in ["classify", "categorize"]):
+        return TaskType.CLASSIFICATION
+    elif any(keyword in func_name for keyword in ["sentiment", "emotion"]):
+        return TaskType.SENTIMENT_ANALYSIS
+    elif any(keyword in func_name for keyword in ["image", "vision", "analyze"]):
+        return TaskType.VISION_ANALYSIS
+    elif any(keyword in func_name for keyword in ["audio", "transcribe", "speech"]):
+        return TaskType.AUDIO_TRANSCRIPTION
+    elif any(keyword in func_name for keyword in ["json", "xml", "structured"]):
+        return TaskType.STRUCTURED_OUTPUT
+    elif any(keyword in func_name for keyword in ["function", "tool", "call"]):
+        return TaskType.FUNCTION_CALLING
+    elif any(keyword in func_name for keyword in ["reason", "think", "analyze"]):
+        return TaskType.REASONING
+    elif any(keyword in func_name for keyword in ["math", "calculate", "solve"]):
+        return TaskType.MATH
+    else:
+        return TaskType.TEXT_GENERATION  # Default
+
+
+def _prepare_request(
+    func: Callable, args: tuple, kwargs: dict, task_type: TaskType
+) -> TaskRequest:
+    """Standalone function to prepare TaskRequest from function call."""
+    # Get function signature
+    sig = inspect.signature(func)
+    bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
+
+    # Extract prompt from arguments
+    prompt = _extract_prompt(bound_args.arguments)
+
+    # Extract additional parameters
+    temperature = bound_args.arguments.get("temperature", 0.7)
+    max_tokens = bound_args.arguments.get("max_tokens")
+    images = bound_args.arguments.get("images")
+    audio = bound_args.arguments.get("audio")
+    structured_output = bound_args.arguments.get("structured_output")
+    functions = bound_args.arguments.get("functions")
+
+    return TaskRequest(
+        prompt=prompt,
+        task_type=task_type,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        images=images,
+        audio=audio,
+        structured_output=structured_output,
+        functions=functions,
+        metadata={
+            "function_name": func.__name__,
+            "module": func.__module__,
+        },
+    )
+
+
+def _extract_prompt(arguments: dict) -> str:
+    """Standalone function to extract prompt from function arguments."""
+    # Common prompt parameter names
+    prompt_params = ["prompt", "text", "input", "message", "query", "question"]
+
+    for param in prompt_params:
+        if param in arguments and arguments[param]:
+            return str(arguments[param])
+
+    # If no explicit prompt parameter, use the first string argument
+    for value in arguments.values():
+        if isinstance(value, str) and value.strip():
+            return value
+
+    # Fallback
+    return "Please process this request."
+
+
 def llm_stream(
     task_type: Optional[TaskType] = None,
     optimization_strategy: OptimizationStrategy = OptimizationStrategy.BALANCED,
@@ -478,16 +580,20 @@ def llm_stream(
             constraints = {
                 "max_cost": max_cost,
                 "max_latency": max_latency,
-                "providers": providers,
-                "model": model,
+                "allowed_providers": providers,
+                "preferred_model": model,
             }
             constraints = {k: v for k, v in constraints.items() if v is not None}
 
-            # Execute streaming
-            async for chunk in switch.execute_stream(
-                request, chunk_callback, metadata_callback
-            ):
-                yield chunk
+            try:
+                # Execute streaming
+                async for chunk in switch.execute_stream(
+                    request, chunk_callback, metadata_callback, constraints
+                ):
+                    yield chunk
+            except Exception as e:
+                logger.error(f"Streaming execution failed: {e}")
+                raise
 
         return cast(F, streaming_wrapper)
 
@@ -549,16 +655,20 @@ def llm_stream_with_metadata(
             constraints = {
                 "max_cost": max_cost,
                 "max_latency": max_latency,
-                "providers": providers,
-                "model": model,
+                "allowed_providers": providers,
+                "preferred_model": model,
             }
             constraints = {k: v for k, v in constraints.items() if v is not None}
 
-            # Execute streaming with metadata
-            async for metadata in switch.execute_stream_with_metadata(
-                request, include_timing, include_tokens
-            ):
-                yield metadata
+            try:
+                # Execute streaming with metadata
+                async for metadata in switch.execute_stream_with_metadata(
+                    request, include_timing, include_tokens, constraints
+                ):
+                    yield metadata
+            except Exception as e:
+                logger.error(f"Streaming with metadata execution failed: {e}")
+                raise
 
         return cast(F, streaming_metadata_wrapper)
 

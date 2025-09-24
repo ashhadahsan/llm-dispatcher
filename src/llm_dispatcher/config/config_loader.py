@@ -296,6 +296,15 @@ def load_config(
     return config_loader.load_config(config_file, env_prefix, merge_with_defaults)
 
 
+def init_config(
+    config_file: Optional[str] = None,
+    env_prefix: str = "LLM_DISPATCHER_",
+    merge_with_defaults: bool = True,
+) -> SwitchConfig:
+    """Initialize configuration and return it."""
+    return config_loader.load_config(config_file, env_prefix, merge_with_defaults)
+
+
 def get_config() -> Optional[SwitchConfig]:
     """Convenience function to get current configuration."""
     return config_loader.get_config()

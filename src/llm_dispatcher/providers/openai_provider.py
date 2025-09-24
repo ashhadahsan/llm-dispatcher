@@ -8,6 +8,7 @@ from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 import asyncio
 from typing import Dict, List, Optional, AsyncGenerator, Any
 import openai
+from pydantic import BaseModel
 from openai import AsyncOpenAI
 
 from .base_provider import BaseProvider
@@ -18,6 +19,16 @@ from ..core.base import (
     ModelInfo,
     PerformanceMetrics,
     Capability,
+)
+from ..exceptions import (
+    ProviderConnectionError,
+    ProviderAuthenticationError,
+    ProviderRateLimitError,
+    ProviderQuotaExceededError,
+    ProviderTimeoutError,
+    ModelNotFoundError,
+    ModelUnsupportedError,
+    ModelContextLengthExceededError,
 )
 
 
@@ -192,10 +203,59 @@ class OpenAIProvider(BaseProvider):
                     "reliability_score": 0.93,
                 },
             ),
+            "gpt-5-mini": ModelInfo(
+                name="gpt-5-mini",
+                provider="openai",
+                capabilities=[
+                    Capability.TEXT,
+                    Capability.VISION,
+                    Capability.STREAMING,
+                    Capability.REASONING,
+                    Capability.CODE,
+                    Capability.MATH,
+                    Capability.AUDIO,
+                ],
+                max_tokens=32768,
+                cost_per_1k_tokens={"input": 0.0001, "output": 0.0003},
+                context_window=200000,
+                latency_ms=600,
+                benchmark_scores={
+                    "mmlu": 0.845,
+                    "human_eval": 0.712,
+                    "gpqa": 0.798,
+                    "aime": 0.889,
+                    "hellaswag": 0.945,
+                    "arc": 0.958,
+                    "truthfulqa": 0.61,
+                    "vqa": 0.785,
+                    "speech_recognition": 0.945,
+                    "latency_ms": 600,
+                    "cost_efficiency": 0.98,
+                    "reliability_score": 0.94,
+                },
+            ),
         }
 
     async def _make_api_call(self, request: TaskRequest, model: str) -> str:
         """Make API call to OpenAI."""
+        # Validate model exists
+        if model not in self.models:
+            raise ModelNotFoundError(model, "openai")
+
+        # Validate model supports required capabilities
+        model_info = self.models[model]
+        if (
+            request.task_type == TaskType.VISION_ANALYSIS
+            and Capability.VISION not in model_info.capabilities
+        ):
+            raise ModelUnsupportedError(model, "openai", "vision")
+
+        # Check context length
+        if request.max_tokens and request.max_tokens > model_info.context_window:
+            raise ModelContextLengthExceededError(
+                model, "openai", request.max_tokens, model_info.context_window
+            )
+
         try:
             # Prepare messages
             messages = self._prepare_messages(request)
@@ -204,21 +264,102 @@ class OpenAIProvider(BaseProvider):
             api_params = {
                 "model": model,
                 "messages": messages,
-                "temperature": request.temperature,
-                "top_p": request.top_p,
-                "frequency_penalty": request.frequency_penalty,
-                "presence_penalty": request.presence_penalty,
-                "max_tokens": request.max_tokens or self.models[model].max_tokens,
             }
 
-            # Add function calling if specified
-            if request.functions:
+            # Use correct parameter name based on model
+            if model.startswith("gpt-4o") or model.startswith("gpt-5"):
+                api_params["max_completion_tokens"] = (
+                    request.max_tokens or self.models[model].max_tokens
+                )
+            else:
+                api_params["max_tokens"] = (
+                    request.max_tokens or self.models[model].max_tokens
+                )
+
+            # GPT-5 models have more restricted parameter sets
+            if not model.startswith("gpt-5"):
+                # Standard parameters for GPT-4 and earlier models
+                api_params.update(
+                    {
+                        "temperature": request.temperature,
+                        "top_p": request.top_p,
+                        "frequency_penalty": request.frequency_penalty,
+                        "presence_penalty": request.presence_penalty,
+                    }
+                )
+            else:
+                # GPT-5 models only support basic parameters
+                if request.temperature is not None:
+                    api_params["temperature"] = request.temperature
+                if request.top_p is not None:
+                    api_params["top_p"] = request.top_p
+
+            # Add function calling if specified (not supported by GPT-5)
+            if request.functions and not model.startswith("gpt-5"):
                 api_params["functions"] = request.functions
                 api_params["function_call"] = "auto"
 
-            # Add structured output if specified
-            if request.structured_output:
-                api_params["response_format"] = {"type": "json_object"}
+            # Add structured output if specified (not supported by GPT-5)
+            if request.structured_output and not model.startswith("gpt-5"):
+                if (
+                    hasattr(request.structured_output, "__bases__")
+                    and BaseModel in request.structured_output.__bases__
+                ):
+                    # It's a Pydantic model class - convert to JSON schema
+                    schema = request.structured_output.model_json_schema()
+                    # Ensure additionalProperties is set to false
+                    if "additionalProperties" not in schema:
+                        schema["additionalProperties"] = False
+
+                    # Also ensure nested objects have additionalProperties set
+                    def set_additional_properties(obj):
+                        if isinstance(obj, dict):
+                            if (
+                                obj.get("type") == "object"
+                                and "additionalProperties" not in obj
+                            ):
+                                obj["additionalProperties"] = False
+                            for value in obj.values():
+                                set_additional_properties(value)
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                set_additional_properties(item)
+
+                    set_additional_properties(schema)
+                    api_params["response_format"] = {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "response_schema",
+                            "schema": schema,
+                            "strict": True,
+                        },
+                    }
+                elif isinstance(request.structured_output, dict):
+                    # Check if it's a full schema or just a type
+                    if (
+                        "type" in request.structured_output
+                        and request.structured_output["type"] == "object"
+                    ):
+                        # Use json_schema format for complex schemas
+                        api_params["response_format"] = {
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "response_schema",
+                                "schema": request.structured_output,
+                                "strict": True,
+                            },
+                        }
+                    else:
+                        # Use the structured output schema directly
+                        api_params["response_format"] = request.structured_output
+                else:
+                    # Default to JSON object format
+                    api_params["response_format"] = {"type": "json_object"}
+
+            # GPT-4o-mini has restricted temperature support
+            if model == "gpt-4o-mini" and request.temperature != 1.0:
+                # Remove temperature for gpt-4o-mini if not default
+                api_params.pop("temperature", None)
 
             # Make the API call
             response = await self.client.chat.completions.create(**api_params)
@@ -229,8 +370,27 @@ class OpenAIProvider(BaseProvider):
             else:
                 raise ValueError("No content in OpenAI response")
 
+        except openai.APIConnectionError as e:
+            raise ProviderConnectionError(
+                "openai", f"Failed to connect to OpenAI API: {e}"
+            )
+        except openai.AuthenticationError as e:
+            raise ProviderAuthenticationError("openai", f"Authentication failed: {e}")
+        except openai.RateLimitError as e:
+            retry_after = getattr(e, "retry_after", None)
+            raise ProviderRateLimitError(
+                "openai", retry_after=retry_after, message=f"Rate limit exceeded: {e}"
+            )
+        except openai.APITimeoutError as e:
+            raise ProviderTimeoutError(
+                "openai",
+                timeout=getattr(e, "timeout", None),
+                message=f"Request timeout: {e}",
+            )
+        except openai.InternalServerError as e:
+            raise ProviderConnectionError("openai", f"OpenAI service error: {e}")
         except Exception as e:
-            raise RuntimeError(f"OpenAI API call failed: {e}")
+            raise ProviderConnectionError("openai", f"Unexpected error: {e}")
 
     async def _make_streaming_api_call(
         self, request: TaskRequest, model: str
@@ -244,18 +404,103 @@ class OpenAIProvider(BaseProvider):
             api_params = {
                 "model": model,
                 "messages": messages,
-                "temperature": request.temperature,
-                "top_p": request.top_p,
-                "frequency_penalty": request.frequency_penalty,
-                "presence_penalty": request.presence_penalty,
-                "max_tokens": request.max_tokens or self.models[model].max_tokens,
                 "stream": True,
             }
 
-            # Add function calling if specified
-            if request.functions:
+            # Use correct parameter name based on model
+            if model.startswith("gpt-4o") or model.startswith("gpt-5"):
+                api_params["max_completion_tokens"] = (
+                    request.max_tokens or self.models[model].max_tokens
+                )
+            else:
+                api_params["max_tokens"] = (
+                    request.max_tokens or self.models[model].max_tokens
+                )
+
+            # GPT-5 models have more restricted parameter sets
+            if not model.startswith("gpt-5"):
+                # Standard parameters for GPT-4 and earlier models
+                api_params.update(
+                    {
+                        "temperature": request.temperature,
+                        "top_p": request.top_p,
+                        "frequency_penalty": request.frequency_penalty,
+                        "presence_penalty": request.presence_penalty,
+                    }
+                )
+            else:
+                # GPT-5 models only support basic parameters
+                if request.temperature is not None:
+                    api_params["temperature"] = request.temperature
+                if request.top_p is not None:
+                    api_params["top_p"] = request.top_p
+
+            # Add function calling if specified (not supported by GPT-5)
+            if request.functions and not model.startswith("gpt-5"):
                 api_params["functions"] = request.functions
                 api_params["function_call"] = "auto"
+
+            # Add structured output if specified (not supported by GPT-5)
+            if request.structured_output and not model.startswith("gpt-5"):
+                if (
+                    hasattr(request.structured_output, "__bases__")
+                    and BaseModel in request.structured_output.__bases__
+                ):
+                    # It's a Pydantic model class - convert to JSON schema
+                    schema = request.structured_output.model_json_schema()
+                    # Ensure additionalProperties is set to false
+                    if "additionalProperties" not in schema:
+                        schema["additionalProperties"] = False
+
+                    # Also ensure nested objects have additionalProperties set
+                    def set_additional_properties(obj):
+                        if isinstance(obj, dict):
+                            if (
+                                obj.get("type") == "object"
+                                and "additionalProperties" not in obj
+                            ):
+                                obj["additionalProperties"] = False
+                            for value in obj.values():
+                                set_additional_properties(value)
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                set_additional_properties(item)
+
+                    set_additional_properties(schema)
+                    api_params["response_format"] = {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "response_schema",
+                            "schema": schema,
+                            "strict": True,
+                        },
+                    }
+                elif isinstance(request.structured_output, dict):
+                    # Check if it's a full schema or just a type
+                    if (
+                        "type" in request.structured_output
+                        and request.structured_output["type"] == "object"
+                    ):
+                        # Use json_schema format for complex schemas
+                        api_params["response_format"] = {
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": "response_schema",
+                                "schema": request.structured_output,
+                                "strict": True,
+                            },
+                        }
+                    else:
+                        # Use the structured output schema directly
+                        api_params["response_format"] = request.structured_output
+                else:
+                    # Default to JSON object format
+                    api_params["response_format"] = {"type": "json_object"}
+
+            # GPT-4o-mini has restricted temperature support
+            if model == "gpt-4o-mini" and request.temperature != 1.0:
+                # Remove temperature for gpt-4o-mini if not default
+                api_params.pop("temperature", None)
 
             # Make the streaming API call
             stream = await self.client.chat.completions.create(**api_params)
@@ -264,8 +509,27 @@ class OpenAIProvider(BaseProvider):
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
 
+        except openai.APIConnectionError as e:
+            raise ProviderConnectionError(
+                "openai", f"Failed to connect to OpenAI API: {e}"
+            )
+        except openai.AuthenticationError as e:
+            raise ProviderAuthenticationError("openai", f"Authentication failed: {e}")
+        except openai.RateLimitError as e:
+            retry_after = getattr(e, "retry_after", None)
+            raise ProviderRateLimitError(
+                "openai", retry_after=retry_after, message=f"Rate limit exceeded: {e}"
+            )
+        except openai.APITimeoutError as e:
+            raise ProviderTimeoutError(
+                "openai",
+                timeout=getattr(e, "timeout", None),
+                message=f"Request timeout: {e}",
+            )
+        except openai.InternalServerError as e:
+            raise ProviderConnectionError("openai", f"OpenAI service error: {e}")
         except Exception as e:
-            raise RuntimeError(f"OpenAI streaming API call failed: {e}")
+            raise ProviderConnectionError("openai", f"Unexpected streaming error: {e}")
 
     async def _make_embeddings_call(self, text: str, model: str) -> List[float]:
         """Make embeddings API call to OpenAI."""
@@ -282,8 +546,27 @@ class OpenAIProvider(BaseProvider):
             else:
                 raise ValueError("No embedding in OpenAI response")
 
+        except openai.APIConnectionError as e:
+            raise ProviderConnectionError(
+                "openai", f"Failed to connect to OpenAI API: {e}"
+            )
+        except openai.AuthenticationError as e:
+            raise ProviderAuthenticationError("openai", f"Authentication failed: {e}")
+        except openai.RateLimitError as e:
+            retry_after = getattr(e, "retry_after", None)
+            raise ProviderRateLimitError(
+                "openai", retry_after=retry_after, message=f"Rate limit exceeded: {e}"
+            )
+        except openai.APITimeoutError as e:
+            raise ProviderTimeoutError(
+                "openai",
+                timeout=getattr(e, "timeout", None),
+                message=f"Request timeout: {e}",
+            )
+        except openai.InternalServerError as e:
+            raise ProviderConnectionError("openai", f"OpenAI service error: {e}")
         except Exception as e:
-            raise RuntimeError(f"OpenAI embeddings API call failed: {e}")
+            raise ProviderConnectionError("openai", f"Unexpected embeddings error: {e}")
 
     def _prepare_messages(self, request: TaskRequest) -> List[Dict[str, Any]]:
         """Prepare messages for OpenAI API."""

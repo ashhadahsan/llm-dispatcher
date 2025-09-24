@@ -14,7 +14,12 @@ from datetime import datetime
 
 from llm_dispatcher import LLMSwitch, llm_dispatcher
 from llm_dispatcher.core import TaskType, Capability, TaskRequest, TaskResponse
-from llm_dispatcher.config import SwitchConfig, OptimizationStrategy, FallbackStrategy
+from llm_dispatcher.config import (
+    SwitchConfig,
+    OptimizationStrategy,
+    FallbackStrategy,
+    SwitchingRules,
+)
 from llm_dispatcher.providers import BaseProvider
 from llm_dispatcher.utils import BenchmarkManager, CostCalculator, PerformanceMonitor
 from llm_dispatcher.multimodal import MultimodalAnalyzer, MediaValidator
@@ -25,23 +30,37 @@ class MockProvider(BaseProvider):
 
     def __init__(self, name: str, models: list = None):
         self.name = name
-        self.models = models or []
+        self.provider_name = name
+        # Convert list of model names to dictionary of ModelInfo objects
+        model_names = models or []
+        self.models = {}
+        for model_name in model_names:
+            from llm_dispatcher.core.base import ModelInfo, Capability
+
+            self.models[model_name] = ModelInfo(
+                name=model_name,
+                provider=name,
+                capabilities=[Capability.TEXT, Capability.CODE],
+                max_tokens=4096,
+                context_window=8192,
+                cost_per_1k_tokens={"input": 0.01, "output": 0.02},
+            )
         self.performance_metrics = {}
         self.health_status = {"status": "healthy", "last_check": datetime.now()}
 
-    async def _make_api_call(self, request: TaskRequest) -> TaskResponse:
-        """Mock API call."""
-        return TaskResponse(
-            content=f"Mock response from {self.name}",
-            model_used="mock-model",
-            provider=self.name,
-            tokens_used=100,
-            cost=0.001,
-            latency_ms=500,
-            finish_reason="stop",
-        )
+        # Initialize statistics tracking
+        self.request_count = 0
+        self.success_count = 0
+        self.error_count = 0
+        self.total_latency_ms = 0.0
+        self.total_latency = 0.0  # Also need this for base provider
+        self.total_cost = 0.0
 
-    async def _make_streaming_api_call(self, request: TaskRequest):
+    async def _make_api_call(self, request: TaskRequest, model: str) -> str:
+        """Mock API call."""
+        return f"Mock response from {self.name}"
+
+    async def _make_streaming_api_call(self, request: TaskRequest, model: str):
         """Mock streaming API call."""
         for i in range(3):
             yield f"chunk_{i}_from_{self.name}"
@@ -67,17 +86,19 @@ class TestLLMSwitchIntegration:
         """Create mock providers for testing."""
         provider1 = MockProvider("provider1", ["model1", "model2"])
         provider2 = MockProvider("provider2", ["model3", "model4"])
-        return [provider1, provider2]
+        return {"provider1": provider1, "provider2": provider2}
 
     @pytest.fixture
     def switch_config(self):
         """Create switch configuration."""
         return SwitchConfig(
-            optimization_strategy=OptimizationStrategy.BALANCED,
-            fallback_strategy=FallbackStrategy.PERFORMANCE_BASED,
-            max_cost_per_request=1.0,
-            max_latency_ms=5000,
-            enable_caching=True,
+            switching_rules=SwitchingRules(
+                optimization_strategy=OptimizationStrategy.BALANCED,
+                fallback_strategy=FallbackStrategy.PERFORMANCE_PRIORITY,
+                max_cost_per_request=1.0,
+                max_latency_ms=5000,
+                enable_caching=True,
+            )
         )
 
     @pytest.fixture
@@ -105,7 +126,7 @@ class TestLLMSwitchIntegration:
     async def test_fallback_mechanism(self, llm_switch):
         """Test fallback mechanism when primary provider fails."""
         # Mock first provider to fail
-        llm_switch.providers[0]._make_api_call = AsyncMock(
+        llm_switch.providers["provider1"]._make_api_call = AsyncMock(
             side_effect=Exception("Provider failed")
         )
 
@@ -135,14 +156,15 @@ class TestLLMSwitchIntegration:
         assert len(chunks) > 0
         assert all(isinstance(chunk, str) for chunk in chunks)
 
-    def test_model_selection_logic(self, llm_switch):
+    @pytest.mark.asyncio
+    async def test_model_selection_logic(self, llm_switch):
         """Test model selection based on task type."""
         request = TaskRequest(
             prompt="Test prompt",
             task_type=TaskType.CODE_GENERATION,
         )
 
-        decision = llm_switch.select_llm(request)
+        decision = await llm_switch.select_llm(request)
 
         assert decision is not None
         assert decision.provider in ["provider1", "provider2"]
@@ -151,7 +173,7 @@ class TestLLMSwitchIntegration:
     def test_cost_constraints(self, llm_switch):
         """Test cost constraint enforcement."""
         # Set very low cost constraint
-        llm_switch.config.max_cost_per_request = 0.0001
+        llm_switch.config.switching_rules.max_cost_per_request = 0.0001
 
         request = TaskRequest(
             prompt="Test prompt",
@@ -166,7 +188,7 @@ class TestLLMSwitchIntegration:
     def test_latency_constraints(self, llm_switch):
         """Test latency constraint enforcement."""
         # Set very low latency constraint
-        llm_switch.config.max_latency_ms = 100
+        llm_switch.config.switching_rules.max_latency_ms = 100
 
         request = TaskRequest(
             prompt="Test prompt",
@@ -182,11 +204,15 @@ class TestLLMSwitchIntegration:
         """Test system status reporting."""
         status = llm_switch.get_system_status()
 
-        assert "providers" in status
-        assert "total_requests" in status
-        assert "average_latency" in status
-        assert "total_cost" in status
-        assert len(status["providers"]) == 2
+        # Check that we have the expected keys in the status
+        assert "total_providers" in status
+        assert "total_models" in status
+        assert "provider_health" in status
+        assert "performance_summary" in status
+
+        # Check that we have 2 providers
+        assert status["total_providers"] == 2
+        assert len(status["provider_health"]) == 2
 
     @pytest.mark.asyncio
     async def test_concurrent_requests(self, llm_switch):

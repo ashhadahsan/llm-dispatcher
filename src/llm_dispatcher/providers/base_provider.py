@@ -35,15 +35,15 @@ class BaseProvider(LLMProvider):
     """
 
     def __init__(self, api_key: str, provider_name: str, **kwargs):
-        super().__init__(api_key, **kwargs)
-        self.provider_name = provider_name
+        # Initialize benchmark manager first
         self.benchmark_manager = BenchmarkManager()
+        self.provider_name = provider_name
         self.request_count = 0
         self.error_count = 0
         self.total_latency = 0.0
 
-        # Initialize performance metrics from benchmark data
-        self._initialize_performance_metrics()
+        # Call parent constructor (this will call _initialize_models and _initialize_performance_metrics)
+        super().__init__(api_key, **kwargs)
 
     def _initialize_performance_metrics(self) -> None:
         """Initialize performance metrics from benchmark data."""

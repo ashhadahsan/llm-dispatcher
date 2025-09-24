@@ -6,7 +6,7 @@ for the LLM-Dispatcher package.
 """
 
 from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 import os
 from pathlib import Path
@@ -82,7 +82,8 @@ class SwitchingRules(BaseModel):
     monthly_budget: Optional[float] = None
     budget_alert_threshold: float = 0.8  # Alert at 80% of budget
 
-    @validator("task_routing")
+    @field_validator("task_routing")
+    @classmethod
     def validate_task_routing(cls, v):
         """Validate task routing configuration."""
         valid_tasks = [
@@ -139,7 +140,8 @@ class SwitchConfig(BaseModel):
     custom_metrics: Dict[str, Any] = Field(default_factory=dict)
     experimental_features: Dict[str, bool] = Field(default_factory=dict)
 
-    @validator("providers")
+    @field_validator("providers")
+    @classmethod
     def validate_providers(cls, v):
         """Validate provider configurations."""
         for name, config in v.items():
@@ -150,7 +152,8 @@ class SwitchConfig(BaseModel):
 
         return v
 
-    @validator("data_dir")
+    @field_validator("data_dir")
+    @classmethod
     def expand_data_dir(cls, v):
         """Expand user home directory in data_dir path."""
         return os.path.expanduser(v)

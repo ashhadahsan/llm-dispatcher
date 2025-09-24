@@ -24,6 +24,9 @@ try:
     AUDIO_LIBS_AVAILABLE = True
 except ImportError:
     AUDIO_LIBS_AVAILABLE = False
+    # Create a dummy AudioSegment class for type hints when pydub is not available
+    class AudioSegment:
+        pass
 
 logger = logging.getLogger(__name__)
 

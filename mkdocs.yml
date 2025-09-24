@@ -1,0 +1,202 @@
+site_name: LLM-Dispatcher
+site_description: Intelligent LLM dispatching with performance-based routing, multimodal support, streaming, monitoring, and comprehensive analytics
+site_url: https://llm-dispatcher.readthedocs.io
+repo_url: https://github.com/ashhadahsan/llm-dispatcher
+repo_name: ashhadahsan/llm-dispatcher
+edit_uri: edit/main/docs/
+
+# Configuration
+theme:
+  name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.footnote.tooltips
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.instant.anchor
+    - navigation.instant.back
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+  logo: assets/logo-header.svg
+  favicon: assets/favicon.svg
+
+# Plugins
+plugins:
+  - search:
+      lang: en
+  - git-revision-date-localized:
+      enable_creation_date: true
+      fallback_to_build_date: true
+  - minify:
+      minify_html: true
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: ashhadahsan
+      repo: llm-dispatcher
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Social links
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ashhadahsan
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/ashhadahsan
+    - icon: fontawesome/brands/linkedin
+      link: https://linkedin.com/in/ashhadahsan
+    - icon: fontawesome/solid/envelope
+      link: mailto:ashhadahsan@gmail.com
+
+  version:
+    provider: mike
+
+# Copyright
+copyright: Copyright &copy; 2025 ashhadahsan
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Configuration: getting-started/configuration.md
+      - Examples: getting-started/examples.md
+  - User Guide:
+      - Basic Usage: user-guide/basic-usage.md
+      - Advanced Features: user-guide/advanced-features.md
+      - Multimodal Support: user-guide/multimodal.md
+      - Streaming: user-guide/streaming.md
+      - Error Handling: user-guide/error-handling.md
+      - Performance Tips: user-guide/performance.md
+      - Troubleshooting: user-guide/troubleshooting.md
+      - Migration Guide: user-guide/migration-guide.md
+  - API Reference:
+      - Overview: API_REFERENCE.md
+      - Core Classes: api/core.md
+      - Decorators: api/decorators.md
+      - Providers: api/providers.md
+      - Exceptions: api/exceptions.md
+      - Configuration: api/configuration.md
+  - Providers:
+      - Overview: providers/overview.md
+      - OpenAI: providers/openai.md
+      - Anthropic: providers/anthropic.md
+      - Google: providers/google.md
+      - xAI (Grok): providers/grok.md
+  - Benchmarks:
+      - Overview: benchmarks/overview.md
+      - Performance Data: benchmarks/performance.md
+      - Cost Analysis: benchmarks/cost.md
+      - Quality Implementation: benchmarks/quality_implementation.md
+      - Quality Benchmarks: benchmarks/quality.md
+      - Custom Benchmarks: benchmarks/custom.md
+      - Model Comparison: benchmarks/comparison.md
+      - Real-World Usage: benchmarks/real-world-usage.md
+  - Integrations:
+      - Coming Soon: integrations/coming-soon.md
+  - Development:
+      - Contributing: development/contributing.md
+      - Testing: development/testing.md
+      - Building: development/building.md
+      - Roadmap: development/roadmap.md
+      - Changelog: development/changelog.md
+      - Security: development/security.md
+      - Code of Conduct: development/code-of-conduct.md
+  - About:
+      - License: about/license.md
+      - Support: about/support.md

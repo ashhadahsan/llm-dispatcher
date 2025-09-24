@@ -31,18 +31,18 @@ class TestOpenAIProvider:
     """Test the OpenAI provider implementation."""
 
     @pytest.fixture
-    def provider(self):
-        """Create a test OpenAI provider instance."""
-        api_key = os.getenv("OPENAI_API_KEY", "test_api_key")
-        return OpenAIProvider(api_key=api_key)
-
-    @pytest.fixture
     def mock_openai_client(self):
         """Create a mock OpenAI client."""
         with patch("llm_dispatcher.providers.openai_provider.AsyncOpenAI") as mock:
             client = AsyncMock()
             mock.return_value = client
             yield client
+
+    @pytest.fixture
+    def provider(self, mock_openai_client):
+        """Create a test OpenAI provider instance."""
+        api_key = os.getenv("OPENAI_API_KEY", "test_api_key")
+        return OpenAIProvider(api_key=api_key)
 
     def test_provider_initialization(self, provider):
         """Test OpenAI provider initialization."""
@@ -459,7 +459,7 @@ class TestOpenAIProvider:
         request = TaskRequest(prompt="Test prompt", task_type=TaskType.TEXT_GENERATION)
 
         # Test that empty response is handled
-        with pytest.raises(ValueError, match="No content in OpenAI response"):
+        with pytest.raises(RuntimeError, match="OpenAI API call failed"):
             await provider.generate(request, "gpt-4")
 
     @pytest.mark.asyncio

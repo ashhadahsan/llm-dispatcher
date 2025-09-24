@@ -8,6 +8,8 @@ from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 import asyncio
 from typing import Dict, List, Optional, AsyncGenerator, Any
 import google.generativeai as genai
+from google.generativeai import GenerativeModel
+from pydantic import BaseModel
 
 from .base_provider import BaseProvider
 from ..core.base import (
@@ -18,6 +20,16 @@ from ..core.base import (
     PerformanceMetrics,
     Capability,
 )
+from ..exceptions import (
+    ProviderConnectionError,
+    ProviderAuthenticationError,
+    ProviderRateLimitError,
+    ProviderQuotaExceededError,
+    ProviderTimeoutError,
+    ModelNotFoundError,
+    ModelUnsupportedError,
+    ModelContextLengthExceededError,
+)
 
 
 class GoogleProvider(BaseProvider):
@@ -26,12 +38,13 @@ class GoogleProvider(BaseProvider):
     def __init__(self, api_key: str, **kwargs):
         super().__init__(api_key, "google", **kwargs)
         genai.configure(api_key=api_key)
+        self.client = genai
 
     def _initialize_models(self) -> None:
         """Initialize Google models with real benchmark data."""
         self.models = {
             "gemini-2.5-pro": ModelInfo(
-                name="gemini-2.5-pro",
+                name="models/gemini-2.5-pro",
                 provider="google",
                 capabilities=[
                     Capability.TEXT,
@@ -42,6 +55,7 @@ class GoogleProvider(BaseProvider):
                     Capability.STREAMING,
                     Capability.LONG_CONTEXT,
                     Capability.AUDIO,
+                    Capability.STRUCTURED_OUTPUT,
                 ],
                 max_tokens=8192,
                 cost_per_1k_tokens={"input": 0.00125, "output": 0.005},
@@ -63,7 +77,7 @@ class GoogleProvider(BaseProvider):
                 },
             ),
             "gemini-2.5-flash": ModelInfo(
-                name="gemini-2.5-flash",
+                name="models/gemini-2.5-flash",
                 provider="google",
                 capabilities=[
                     Capability.TEXT,
@@ -74,6 +88,7 @@ class GoogleProvider(BaseProvider):
                     Capability.STREAMING,
                     Capability.LONG_CONTEXT,
                     Capability.AUDIO,
+                    Capability.STRUCTURED_OUTPUT,
                 ],
                 max_tokens=8192,
                 cost_per_1k_tokens={"input": 0.000075, "output": 0.0003},
@@ -95,7 +110,7 @@ class GoogleProvider(BaseProvider):
                 },
             ),
             "gemini-1.5-pro": ModelInfo(
-                name="gemini-1.5-pro",
+                name="models/gemini-1.5-pro",
                 provider="google",
                 capabilities=[
                     Capability.TEXT,
@@ -106,6 +121,7 @@ class GoogleProvider(BaseProvider):
                     Capability.STREAMING,
                     Capability.LONG_CONTEXT,
                     Capability.AUDIO,
+                    Capability.STRUCTURED_OUTPUT,
                 ],
                 max_tokens=8192,
                 cost_per_1k_tokens={"input": 0.00125, "output": 0.005},
@@ -127,7 +143,7 @@ class GoogleProvider(BaseProvider):
                 },
             ),
             "gemini-1.5-flash": ModelInfo(
-                name="gemini-1.5-flash",
+                name="models/gemini-1.5-flash",
                 provider="google",
                 capabilities=[
                     Capability.TEXT,
@@ -138,6 +154,7 @@ class GoogleProvider(BaseProvider):
                     Capability.STREAMING,
                     Capability.LONG_CONTEXT,
                     Capability.AUDIO,
+                    Capability.STRUCTURED_OUTPUT,
                 ],
                 max_tokens=8192,
                 cost_per_1k_tokens={"input": 0.000075, "output": 0.0003},
@@ -192,23 +209,57 @@ class GoogleProvider(BaseProvider):
 
     async def _make_api_call(self, request: TaskRequest, model: str) -> str:
         """Make API call to Google."""
-        try:
-            # Get the model
-            genai_model = genai.GenerativeModel(model)
+        # Validate model exists
+        if model not in self.models:
+            raise ModelNotFoundError(model, "google")
 
+        # Validate model supports required capabilities
+        model_info = self.models[model]
+        if (
+            request.task_type == TaskType.VISION_ANALYSIS
+            and Capability.VISION not in model_info.capabilities
+        ):
+            raise ModelUnsupportedError(model, "google", "vision")
+
+        # Check context length
+        if request.max_tokens and request.max_tokens > model_info.context_window:
+            raise ModelContextLengthExceededError(
+                model, "google", request.max_tokens, model_info.context_window
+            )
+
+        try:
             # Prepare content
             content = self._prepare_content(request)
 
             # Prepare generation config
-            generation_config = genai.types.GenerationConfig(
+            config = genai.types.GenerationConfig(
                 temperature=request.temperature,
                 top_p=request.top_p,
-                max_output_tokens=request.max_tokens or self.models[model].max_tokens,
+                max_output_tokens=request.max_tokens or model_info.max_tokens,
             )
 
-            # Make the API call
-            response = await genai_model.generate_content_async(
-                content, generation_config=generation_config
+            # Add structured output if specified
+            if request.structured_output:
+                config.response_mime_type = "application/json"
+                # Handle Pydantic models directly (as per Google docs)
+                if (
+                    hasattr(request.structured_output, "__bases__")
+                    and BaseModel in request.structured_output.__bases__
+                ):
+                    # It's a Pydantic model class
+                    config.response_schema = request.structured_output
+                elif isinstance(request.structured_output, dict):
+                    # It's a JSON schema dict
+                    config.response_schema = request.structured_output
+                else:
+                    # Other types (like list[Model])
+                    config.response_schema = request.structured_output
+
+            # Make the API call using the correct method
+            model_instance = self.client.GenerativeModel(model_info.name)
+            response = model_instance.generate_content(
+                content,
+                generation_config=config,
             )
 
             # Extract content
@@ -218,43 +269,92 @@ class GoogleProvider(BaseProvider):
                 raise ValueError("No content in Google response")
 
         except Exception as e:
-            raise RuntimeError(f"Google API call failed: {e}")
+            if "PERMISSION_DENIED" in str(e):
+                raise ProviderAuthenticationError(
+                    "google", f"Authentication failed: {e}"
+                )
+            elif "QUOTA_EXCEEDED" in str(e):
+                raise ProviderQuotaExceededError("google", f"Quota exceeded: {e}")
+            elif "RESOURCE_EXHAUSTED" in str(e):
+                raise ProviderRateLimitError(
+                    "google", message=f"Rate limit exceeded: {e}"
+                )
+            else:
+                raise ProviderConnectionError("google", f"Google API error: {e}")
+        except Exception as e:
+            raise ProviderConnectionError("google", f"Unexpected error: {e}")
 
     async def _make_streaming_api_call(
         self, request: TaskRequest, model: str
     ) -> AsyncGenerator[str, None]:
         """Make streaming API call to Google."""
         try:
-            # Get the model
-            genai_model = genai.GenerativeModel(model)
+            # Validate model exists
+            if model not in self.models:
+                raise ModelNotFoundError(model, "google")
+
+            model_info = self.models[model]
 
             # Prepare content
             content = self._prepare_content(request)
 
             # Prepare generation config
-            generation_config = genai.types.GenerationConfig(
+            config = genai.types.GenerateContentConfig(
                 temperature=request.temperature,
                 top_p=request.top_p,
-                max_output_tokens=request.max_tokens or self.models[model].max_tokens,
+                max_output_tokens=request.max_tokens or model_info.max_tokens,
             )
 
-            # Make the streaming API call
-            response_stream = await genai_model.generate_content_async(
-                content, generation_config=generation_config, stream=True
+            # Add structured output if specified
+            if request.structured_output:
+                config.response_mime_type = "application/json"
+                # Handle Pydantic models directly (as per Google docs)
+                if (
+                    hasattr(request.structured_output, "__bases__")
+                    and BaseModel in request.structured_output.__bases__
+                ):
+                    # It's a Pydantic model class
+                    config.response_schema = request.structured_output
+                elif isinstance(request.structured_output, dict):
+                    # It's a JSON schema dict
+                    config.response_schema = request.structured_output
+                else:
+                    # Other types (like list[Model])
+                    config.response_schema = request.structured_output
+
+            # Make the streaming API call using the correct method
+            model_instance = self.client.GenerativeModel(model_info.name)
+            response_stream = model_instance.generate_content(
+                content,
+                generation_config=config,
+                stream=True,
             )
 
-            async for chunk in response_stream:
+            for chunk in response_stream:
                 if chunk.text:
                     yield chunk.text
 
         except Exception as e:
-            raise RuntimeError(f"Google streaming API call failed: {e}")
+            if "PERMISSION_DENIED" in str(e):
+                raise ProviderAuthenticationError(
+                    "google", f"Authentication failed: {e}"
+                )
+            elif "QUOTA_EXCEEDED" in str(e):
+                raise ProviderQuotaExceededError("google", f"Quota exceeded: {e}")
+            elif "RESOURCE_EXHAUSTED" in str(e):
+                raise ProviderRateLimitError(
+                    "google", message=f"Rate limit exceeded: {e}"
+                )
+            else:
+                raise ProviderConnectionError("google", f"Google API error: {e}")
+        except Exception as e:
+            raise ProviderConnectionError("google", f"Unexpected streaming error: {e}")
 
     async def _make_embeddings_call(self, text: str, model: str) -> List[float]:
         """Make embeddings API call to Google."""
         try:
             # Use text-embedding-004 for embeddings
-            result = await genai.embed_content_async(
+            result = genai.embed_content(
                 model="models/text-embedding-004", content=text
             )
 
@@ -264,39 +364,84 @@ class GoogleProvider(BaseProvider):
                 raise ValueError("No embedding in Google response")
 
         except Exception as e:
-            raise RuntimeError(f"Google embeddings API call failed: {e}")
+            if "PERMISSION_DENIED" in str(e):
+                raise ProviderAuthenticationError(
+                    "google", f"Authentication failed: {e}"
+                )
+            elif "QUOTA_EXCEEDED" in str(e):
+                raise ProviderQuotaExceededError("google", f"Quota exceeded: {e}")
+            elif "RESOURCE_EXHAUSTED" in str(e):
+                raise ProviderRateLimitError(
+                    "google", message=f"Rate limit exceeded: {e}"
+                )
+            else:
+                raise ProviderConnectionError("google", f"Google API error: {e}")
+        except Exception as e:
+            raise ProviderConnectionError("google", f"Unexpected embeddings error: {e}")
 
-    def _prepare_content(self, request: TaskRequest) -> List[Any]:
-        """Prepare content for Google API."""
-        content = []
+    def _prepare_content(self, request: TaskRequest) -> list:
+        """Prepare content for Google API using the new format."""
+        # Use the standard google.generativeai format
 
-        # Add text content
-        if request.prompt:
-            content.append(request.prompt)
+        content_parts = []
 
-        # Add image content if present
+        # Add images if present
         if request.images:
-            for image in request.images:
-                # Convert base64 to PIL Image
-                import base64
-                from PIL import Image
-                import io
+            for image_data in request.images:
+                if isinstance(image_data, str):
+                    # Assume it's a file path
+                    with open(image_data, "rb") as f:
+                        image_bytes = f.read()
+                    content_parts.append(
+                        {
+                            "inline_data": {
+                                "data": image_bytes,
+                                "mime_type": "image/jpeg",  # Default to JPEG, could be detected
+                            }
+                        }
+                    )
+                elif isinstance(image_data, bytes):
+                    # Raw image bytes
+                    content_parts.append(
+                        {
+                            "inline_data": {
+                                "data": image_data,
+                                "mime_type": "image/jpeg",
+                            }
+                        }
+                    )
 
-                image_data = base64.b64decode(image)
-                image_obj = Image.open(io.BytesIO(image_data))
-                content.append(image_obj)
-
-        # Add audio content if present
+        # Add audio if present
         if request.audio:
-            # Google supports audio input
-            import base64
-            import io
+            for audio_data in request.audio:
+                if isinstance(audio_data, str):
+                    # Assume it's a file path
+                    with open(audio_data, "rb") as f:
+                        audio_bytes = f.read()
+                    content_parts.append(
+                        {
+                            "inline_data": {
+                                "data": audio_bytes,
+                                "mime_type": "audio/mp3",  # Default to MP3, could be detected
+                            }
+                        }
+                    )
+                elif isinstance(audio_data, bytes):
+                    # Raw audio bytes
+                    content_parts.append(
+                        {
+                            "inline_data": {
+                                "data": audio_data,
+                                "mime_type": "audio/mp3",
+                            }
+                        }
+                    )
 
-            audio_data = base64.b64decode(request.audio)
-            audio_file = io.BytesIO(audio_data)
-            content.append(audio_file)
+        # Add text prompt
+        if request.prompt:
+            content_parts.append({"text": request.prompt})
 
-        return content
+        return content_parts
 
     def get_models_for_task(self, task_type: TaskType) -> List[str]:
         """Get models suitable for the given task type."""

@@ -25,6 +25,13 @@ from ..utils.benchmark_manager import BenchmarkManager
 from ..utils.cost_calculator import CostCalculator
 from ..utils.performance_monitor import PerformanceMonitor
 from ..config.settings import SwitchConfig, OptimizationStrategy, FallbackStrategy
+from ..exceptions import (
+    FallbackExhaustedError,
+    NoAvailableProvidersError,
+    CostLimitExceededError,
+    ModelNotFoundError,
+    ProviderError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,39 +82,39 @@ class LLMSwitch:
 
         weight_configs = {
             OptimizationStrategy.PERFORMANCE: {
-                "performance": 0.6,
-                "cost": 0.1,
+                "performance": 0.7,  # More aggressive performance focus
+                "cost": 0.05,  # Minimize cost consideration
                 "latency": 0.1,
                 "availability": 0.1,
-                "reliability": 0.1,
+                "reliability": 0.05,
             },
             OptimizationStrategy.COST: {
-                "performance": 0.2,
-                "cost": 0.5,
+                "performance": 0.05,  # Minimize performance consideration even more
+                "cost": 0.8,  # Even more aggressive cost focus
                 "latency": 0.1,
-                "availability": 0.1,
-                "reliability": 0.1,
+                "availability": 0.025,
+                "reliability": 0.025,
             },
             OptimizationStrategy.SPEED: {
-                "performance": 0.2,
-                "cost": 0.1,
-                "latency": 0.5,
+                "performance": 0.1,  # Minimize performance consideration
+                "cost": 0.05,
+                "latency": 0.7,  # Much more aggressive speed focus
                 "availability": 0.1,
-                "reliability": 0.1,
+                "reliability": 0.05,
             },
             OptimizationStrategy.RELIABILITY: {
-                "performance": 0.2,
-                "cost": 0.1,
+                "performance": 0.1,
+                "cost": 0.05,
                 "latency": 0.1,
-                "availability": 0.2,
-                "reliability": 0.4,
+                "availability": 0.3,
+                "reliability": 0.45,  # More aggressive reliability focus
             },
             OptimizationStrategy.BALANCED: {
-                "performance": 0.3,
-                "cost": 0.2,
-                "latency": 0.2,
-                "availability": 0.15,
-                "reliability": 0.15,
+                "performance": 0.25,  # Slightly reduced to allow more differentiation
+                "cost": 0.25,  # Increased cost weight
+                "latency": 0.25,  # Increased latency weight
+                "availability": 0.125,
+                "reliability": 0.125,
             },
         }
 
@@ -143,7 +150,7 @@ class LLMSwitch:
         candidates = await self._get_candidates(request, constraints)
 
         if not candidates:
-            raise ValueError("No suitable LLMs found for the request")
+            raise NoAvailableProvidersError("No suitable LLMs found for the request")
 
         # Score each candidate
         scored_candidates = []
@@ -218,6 +225,21 @@ class LLMSwitch:
         self, provider: LLMProvider, model: str, constraints: Dict[str, Any]
     ) -> bool:
         """Check if a model meets the given constraints."""
+        # Check allowed providers constraint
+        if "allowed_providers" in constraints:
+            provider_name = getattr(
+                provider,
+                "provider_name",
+                provider.__class__.__name__.lower().replace("provider", ""),
+            )
+            if provider_name not in constraints["allowed_providers"]:
+                return False
+
+        # Check preferred model constraint
+        if "preferred_model" in constraints:
+            if model != constraints["preferred_model"]:
+                return False
+
         if "max_cost" in constraints:
             estimated_cost = provider.estimate_cost(
                 model, provider.estimate_tokens(""), provider.estimate_tokens("")
@@ -276,19 +298,31 @@ class LLMSwitch:
         factors["performance"] = perf_score
         reasoning_parts.append(f"Performance: {perf_score:.2f}")
 
-        # Cost score (lower is better)
+        # Cost score (lower is better, with better differentiation)
         estimated_cost = provider.estimate_cost(
             model_name,
             provider.estimate_tokens(request.prompt),
             provider.estimate_tokens(""),  # Rough estimate
         )
-        cost_score = max(0, 1 - (estimated_cost / 0.01))  # Normalize
+        # More aggressive cost scoring to differentiate models
+        if estimated_cost == 0:
+            cost_score = 1.0  # Free models get max score
+        else:
+            cost_score = max(0, 1 - (estimated_cost / 0.005))  # Normalize to 0.5¢ max
         factors["cost"] = cost_score
         reasoning_parts.append(f"Cost: ${estimated_cost:.4f}")
 
-        # Latency score (lower is better)
+        # Latency score (lower is better, with better differentiation)
         latency = self._estimate_latency(provider_name, model_name, request)
-        latency_score = max(0, 1 - (latency / 5000))  # Normalize to 5s max
+        # More aggressive latency scoring
+        if latency < 1000:  # Very fast
+            latency_score = 1.0
+        elif latency < 2000:  # Fast
+            latency_score = 0.8
+        elif latency < 3000:  # Medium
+            latency_score = 0.6
+        else:  # Slow
+            latency_score = max(0, 1 - (latency / 10000))  # Normalize to 10s max
         factors["latency"] = latency_score
         reasoning_parts.append(f"Latency: {latency:.0f}ms")
 
@@ -302,10 +336,29 @@ class LLMSwitch:
         factors["reliability"] = reliability_score
         reasoning_parts.append(f"Reliability: {reliability_score:.2f}")
 
+        # Task-specific scoring bonus (reduced for cost optimization)
+        task_bonus = self._get_task_specific_bonus(
+            provider_name, model_name, request.task_type
+        )
+
+        # Reduce task bonus impact for cost optimization strategy
+        if (
+            self.config.switching_rules.optimization_strategy
+            == OptimizationStrategy.COST
+        ):
+            task_bonus *= 0.3  # Reduce task bonus to 30% for cost optimization
+
+        factors["task_bonus"] = task_bonus
+        if task_bonus > 0:
+            reasoning_parts.append(f"Task bonus: +{task_bonus:.2f}")
+
         # Calculate weighted score
         total_score = sum(
             factors[metric] * self.weights[metric] for metric in self.weights
         )
+
+        # Add task bonus to total score
+        total_score += task_bonus
 
         reasoning = f"Score: {total_score:.2f} ({', '.join(reasoning_parts)})"
 
@@ -375,6 +428,7 @@ class LLMSwitch:
         Execute a request with automatic fallback if the primary LLM fails.
         """
         decision = await self.select_llm(request, constraints)
+        fallback_decisions = [decision]  # Track all failed decisions
 
         # Try primary choice
         try:
@@ -411,16 +465,28 @@ class LLMSwitch:
 
                 except Exception as fallback_error:
                     logger.warning(f"Fallback failed: {fallback_error}")
+                    # Create a mock decision for tracking
+                    from .base import LLMDecision
+
+                    fallback_decision = LLMDecision(
+                        provider=fallback_provider,
+                        model=fallback_model,
+                        confidence=0.0,
+                        fallback_options=[],
+                    )
+                    fallback_decisions.append(fallback_decision)
                     continue
 
             # All options failed
-            raise RuntimeError("All LLM options failed")
+            failed_providers = [decision.provider for decision in fallback_decisions]
+            raise FallbackExhaustedError("All LLM options failed", failed_providers)
 
     async def execute_stream(
         self,
         request: TaskRequest,
         chunk_callback: Optional[callable] = None,
         metadata_callback: Optional[callable] = None,
+        constraints: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[str, None]:
         """
         Execute a request with streaming response.
@@ -429,24 +495,26 @@ class LLMSwitch:
             request: The task request to execute
             chunk_callback: Optional callback for processing chunks
             metadata_callback: Optional callback for receiving metadata
+            constraints: Optional constraints for LLM selection
 
         Yields:
             str: Streaming response chunks
         """
-        decision = self.select_llm(request)
+        decision = await self.select_llm(request, constraints)
         if not decision:
-            raise ValueError("No suitable LLM found for the request")
+            raise NoAvailableProvidersError("No suitable LLM found for the request")
 
+        fallback_decisions = [decision]  # Track all failed decisions
         provider = self._get_provider(decision.provider)
         if not provider:
-            raise ValueError(f"Provider {decision.provider} not found")
+            raise ModelNotFoundError(decision.model, decision.provider)
 
         start_time = time.time()
         total_tokens = 0
         chunk_count = 0
 
         try:
-            async for chunk in provider.generate_stream(request):
+            async for chunk in provider.generate_stream(request, decision.model):
                 chunk_count += 1
 
                 # Process chunk through callback if provided
@@ -475,7 +543,10 @@ class LLMSwitch:
             # Record final performance
             end_time = time.time()
             latency = (end_time - start_time) * 1000
-            cost = provider.estimate_cost(request, total_tokens)
+            input_tokens = provider.estimate_tokens(request.prompt)
+            cost = provider.estimate_cost(
+                decision.model, input_tokens, total_tokens - input_tokens
+            )
 
             self._record_performance(
                 decision.provider, decision.model, 1.0  # Success score
@@ -499,7 +570,9 @@ class LLMSwitch:
                         total_tokens = 0
                         chunk_count = 0
 
-                        async for chunk in provider.generate_stream(request):
+                        async for chunk in provider.generate_stream(
+                            request, decision.model
+                        ):
                             chunk_count += 1
 
                             if chunk_callback:
@@ -530,15 +603,31 @@ class LLMSwitch:
                     logger.warning(
                         f"Fallback provider {fallback_provider} also failed: {fallback_error}"
                     )
+                    # Create a mock decision for tracking
+                    from .base import LLMDecision
+
+                    fallback_decision = LLMDecision(
+                        provider=fallback_provider,
+                        model=fallback_model,
+                        confidence=0.0,
+                        fallback_options=[],
+                    )
+                    fallback_decisions.append(fallback_decision)
                     continue
 
-            raise Exception(f"All providers failed for streaming request: {e}")
+            failed_providers = [decision.provider] + [
+                decision.provider for decision in fallback_decisions
+            ]
+            raise FallbackExhaustedError(
+                f"All providers failed for streaming request: {e}", failed_providers
+            )
 
     async def execute_stream_with_metadata(
         self,
         request: TaskRequest,
         include_timing: bool = True,
         include_tokens: bool = True,
+        constraints: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Execute streaming request with detailed metadata.
@@ -547,24 +636,26 @@ class LLMSwitch:
             request: The task request to execute
             include_timing: Whether to include timing information
             include_tokens: Whether to include token estimation
+            constraints: Optional constraints for LLM selection
 
         Yields:
             Dict containing chunk data and metadata
         """
-        decision = self.select_llm(request)
+        decision = await self.select_llm(request, constraints)
         if not decision:
-            raise ValueError("No suitable LLM found for the request")
+            raise NoAvailableProvidersError("No suitable LLM found for the request")
 
+        fallback_decisions = [decision]  # Track all failed decisions
         provider = self._get_provider(decision.provider)
         if not provider:
-            raise ValueError(f"Provider {decision.provider} not found")
+            raise ModelNotFoundError(decision.model, decision.provider)
 
         start_time = time.time()
         total_tokens = 0
         chunk_count = 0
 
         try:
-            async for chunk in provider.generate_stream(request):
+            async for chunk in provider.generate_stream(request, decision.model):
                 chunk_count += 1
 
                 metadata = {
@@ -614,7 +705,9 @@ class LLMSwitch:
                         total_tokens = 0
                         chunk_count = 0
 
-                        async for chunk in provider.generate_stream(request):
+                        async for chunk in provider.generate_stream(
+                            request, decision.model
+                        ):
                             chunk_count += 1
 
                             metadata = {
@@ -654,6 +747,16 @@ class LLMSwitch:
                     logger.warning(
                         f"Fallback provider {fallback_provider} also failed: {fallback_error}"
                     )
+                    # Create a mock decision for tracking
+                    from .base import LLMDecision
+
+                    fallback_decision = LLMDecision(
+                        provider=fallback_provider,
+                        model=fallback_model,
+                        confidence=0.0,
+                        fallback_options=[],
+                    )
+                    fallback_decisions.append(fallback_decision)
                     continue
 
             # Error metadata
@@ -666,7 +769,12 @@ class LLMSwitch:
                 "finish_reason": "error",
             }
             yield error_metadata
-            raise Exception(f"All providers failed for streaming request: {e}")
+            failed_providers = [decision.provider] + [
+                decision.provider for decision in fallback_decisions
+            ]
+            raise FallbackExhaustedError(
+                f"All providers failed for streaming request: {e}", failed_providers
+            )
 
     def _record_performance(self, provider: str, model: str, score: float):
         """Record performance for a model."""
@@ -685,24 +793,64 @@ class LLMSwitch:
     ) -> List[Tuple[str, str]]:
         """Get fallback chain prioritizing performance."""
         rankings = self.benchmark_manager.get_task_performance_ranking(task_type)
-        return [(provider, model) for model, score in rankings[:3]]
+        fallback_chain = []
+
+        for model, score in rankings[:3]:
+            # Find which provider has this model
+            for provider_name, provider in self.providers.items():
+                if model in provider.models:
+                    fallback_chain.append((provider_name, model))
+                    break
+
+        return fallback_chain
 
     def _get_cost_fallback_chain(self, task_type: TaskType) -> List[Tuple[str, str]]:
         """Get fallback chain prioritizing cost efficiency."""
         cost_rankings = self.cost_calculator.get_cost_efficiency_ranking()
-        return [(provider, model) for model, score in cost_rankings[:3]]
+        fallback_chain = []
+
+        for model, score in cost_rankings[:3]:
+            # Find which provider has this model
+            for provider_name, provider in self.providers.items():
+                if model in provider.models:
+                    fallback_chain.append((provider_name, model))
+                    break
+
+        return fallback_chain
 
     def _get_speed_fallback_chain(self, task_type: TaskType) -> List[Tuple[str, str]]:
         """Get fallback chain prioritizing speed."""
         speed_rankings = self.benchmark_manager.get_speed_ranking()
-        return [(provider, model) for model, latency in speed_rankings[:3]]
+        fallback_chain = []
+
+        for model, latency in speed_rankings[:3]:
+            # Find which provider has this model
+            for provider_name, provider in self.providers.items():
+                if model in provider.models:
+                    fallback_chain.append((provider_name, model))
+                    break
+
+        return fallback_chain
 
     def _get_reliability_fallback_chain(
         self, task_type: TaskType
     ) -> List[Tuple[str, str]]:
         """Get fallback chain prioritizing reliability."""
         reliability_rankings = self.benchmark_manager.get_reliability_ranking()
-        return [(provider, model) for model, score in reliability_rankings[:3]]
+        fallback_chain = []
+
+        for model, score in reliability_rankings[:3]:
+            # Find which provider has this model
+            for provider_name, provider in self.providers.items():
+                if model in provider.models:
+                    fallback_chain.append((provider_name, model))
+                    break
+
+        return fallback_chain
+
+    def _get_provider(self, provider_name: str) -> Optional[LLMProvider]:
+        """Get provider by name."""
+        return self.providers.get(provider_name)
 
     def get_system_status(self) -> Dict[str, Any]:
         """Get overall system status and health."""
@@ -741,3 +889,99 @@ class LLMSwitch:
     def set_decision_weights(self, weights: Dict[str, float]) -> None:
         """Set custom decision weights."""
         self.weights = weights.copy()
+
+    def _get_task_specific_bonus(
+        self, provider_name: str, model_name: str, task_type: TaskType
+    ) -> float:
+        """Get task-specific bonus score for a model."""
+        provider = self.providers[provider_name]
+        model_info = provider.get_model_info(model_name)
+
+        if not model_info:
+            return 0.0
+
+        bonus = 0.0
+
+        # Task-specific bonuses based on model capabilities and performance
+        if task_type == TaskType.CODE_GENERATION:
+            # Favor models with high code generation scores
+            if "human_eval" in model_info.benchmark_scores:
+                code_score = model_info.benchmark_scores["human_eval"]
+                if code_score > 0.7:
+                    bonus += 0.3
+                elif code_score > 0.6:
+                    bonus += 0.2
+                elif code_score > 0.5:
+                    bonus += 0.1
+
+        elif task_type == TaskType.MATH:
+            # Favor models with high math scores
+            if "aime" in model_info.benchmark_scores:
+                math_score = model_info.benchmark_scores["aime"]
+                if math_score > 0.9:
+                    bonus += 0.3
+                elif math_score > 0.8:
+                    bonus += 0.2
+                elif math_score > 0.7:
+                    bonus += 0.1
+
+        elif task_type == TaskType.REASONING:
+            # Favor models with high reasoning scores
+            if "gpqa" in model_info.benchmark_scores:
+                reasoning_score = model_info.benchmark_scores["gpqa"]
+                if reasoning_score > 0.8:
+                    bonus += 0.3
+                elif reasoning_score > 0.7:
+                    bonus += 0.2
+                elif reasoning_score > 0.6:
+                    bonus += 0.1
+
+        elif task_type == TaskType.VISION_ANALYSIS:
+            # Favor models with vision capabilities
+            if Capability.VISION in model_info.capabilities:
+                if "vqa" in model_info.benchmark_scores:
+                    vision_score = model_info.benchmark_scores["vqa"]
+                    if vision_score > 0.7:
+                        bonus += 0.3
+                    elif vision_score > 0.6:
+                        bonus += 0.2
+                else:
+                    bonus += 0.1  # Has vision capability but no benchmark score
+
+        elif task_type == TaskType.AUDIO_TRANSCRIPTION:
+            # Favor models with audio capabilities
+            if Capability.AUDIO in model_info.capabilities:
+                if "speech_recognition" in model_info.benchmark_scores:
+                    audio_score = model_info.benchmark_scores["speech_recognition"]
+                    if audio_score > 0.9:
+                        bonus += 0.3
+                    elif audio_score > 0.8:
+                        bonus += 0.2
+                else:
+                    bonus += 0.1  # Has audio capability but no benchmark score
+
+        elif task_type == TaskType.TEXT_GENERATION:
+            # Favor models with high general performance
+            if "mmlu" in model_info.benchmark_scores:
+                general_score = model_info.benchmark_scores["mmlu"]
+                if general_score > 0.85:
+                    bonus += 0.2
+                elif general_score > 0.8:
+                    bonus += 0.1
+
+        # Provider-specific bonuses for certain tasks
+        if provider_name == "openai" and task_type in [
+            TaskType.CODE_GENERATION,
+            TaskType.FUNCTION_CALLING,
+        ]:
+            bonus += 0.1  # OpenAI is generally good at code and function calling
+
+        elif provider_name == "google" and task_type in [
+            TaskType.REASONING,
+            TaskType.MATH,
+        ]:
+            bonus += 0.1  # Google models are generally good at reasoning and math
+
+        return min(
+            bonus, 0.5
+        )  # Cap the bonus at 0.5 to avoid overwhelming other factors

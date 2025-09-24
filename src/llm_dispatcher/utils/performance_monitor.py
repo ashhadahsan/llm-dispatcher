@@ -116,6 +116,28 @@ class PerformanceMonitor:
             if cache_key in self.stats_cache:
                 del self.stats_cache[cache_key]
 
+    def record_metric(
+        self,
+        metric_name: str,
+        value: float,
+        tags: Optional[Dict[str, str]] = None,
+    ) -> None:
+        """Record a generic metric."""
+        # For now, we'll store this as a simple dictionary
+        # In a real implementation, you might want a more sophisticated metric storage
+        with self._lock:
+            # Create a simple metric record
+            metric_record = {
+                "timestamp": datetime.now(),
+                "metric_name": metric_name,
+                "value": value,
+                "tags": tags or {},
+            }
+            # Store in a simple list for now
+            if not hasattr(self, "generic_metrics"):
+                self.generic_metrics = []
+            self.generic_metrics.append(metric_record)
+
     def get_performance_stats(
         self, provider: str, model: str, time_window: Optional[timedelta] = None
     ) -> PerformanceStats:

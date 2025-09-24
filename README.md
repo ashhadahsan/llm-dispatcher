@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Tests](https://img.shields.io/badge/tests-pytest-blue.svg)](https://pytest.org/)
+[![Coverage](https://codecov.io/gh/ashhadahsan/llm-dispatcher/branch/main/graph/badge.svg)](https://codecov.io/gh/ashhadahsan/llm-dispatcher)
+[![Coverage](https://img.shields.io/badge/coverage-47%25-red.svg)](https://github.com/ashhadahsan/llm-dispatcher)
 
 **LLM-Dispatcher** is an intelligent Python package that automatically selects the best Large Language Model (LLM) for your specific task based on performance metrics, cost optimization, and real-time availability.
 
@@ -110,11 +112,51 @@ pip install -e ".[dev]"
 pre-commit install
 ```
 
-### Run Tests
+### Testing & Coverage
+
+#### Run Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=src/llm_dispatcher --cov-report=term-missing --cov-report=html
+
+# Run specific test categories
+pytest tests/test_core_switching.py -v
+pytest tests/test_providers/ -v
+pytest tests/test_multimodal.py -v
 ```
+
+#### Current Test Coverage
+
+- **Overall Coverage**: 47% (7,344 statements, 3,886 missed)
+- **Core Components**: 98% coverage on base classes
+- **Provider Integration**: 48-91% coverage across providers
+- **Multimodal Support**: 47-86% coverage
+- **Monitoring & Analytics**: 0% coverage (new features)
+
+#### Coverage Reports
+
+```bash
+# Generate HTML coverage report
+pytest --cov=src/llm_dispatcher --cov-report=html
+open htmlcov/index.html
+
+# Generate XML report for CI/CD
+pytest --cov=src/llm_dispatcher --cov-report=xml
+
+# Update coverage badge in README
+python scripts/update_coverage_badge.py
+```
+
+#### Automated Coverage
+
+- **GitHub Actions**: Automated coverage reporting on every PR
+- **Codecov Integration**: Real-time coverage tracking
+- **Coverage Badge**: Automatically updated in README
+- **Coverage Reports**: Available as GitHub Actions artifacts
 
 ### Run Benchmarks
 

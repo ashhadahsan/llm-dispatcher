@@ -6,9 +6,11 @@ from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 """
 
 import asyncio
+import json
 from typing import Dict, List, Optional, AsyncGenerator, Any
 import anthropic
 from anthropic import AsyncAnthropic
+from pydantic import BaseModel
 
 from .base_provider import BaseProvider
 from ..core.base import (
@@ -18,6 +20,16 @@ from ..core.base import (
     ModelInfo,
     PerformanceMetrics,
     Capability,
+)
+from ..exceptions import (
+    ProviderConnectionError,
+    ProviderAuthenticationError,
+    ProviderRateLimitError,
+    ProviderQuotaExceededError,
+    ProviderTimeoutError,
+    ModelNotFoundError,
+    ModelUnsupportedError,
+    ModelContextLengthExceededError,
 )
 
 
@@ -32,7 +44,7 @@ class AnthropicProvider(BaseProvider):
         """Initialize Anthropic models with real benchmark data."""
         self.models = {
             "claude-3-opus": ModelInfo(
-                name="claude-3-opus",
+                name="claude-opus-4-20250514",
                 provider="anthropic",
                 capabilities=[
                     Capability.TEXT,
@@ -42,6 +54,7 @@ class AnthropicProvider(BaseProvider):
                     Capability.MATH,
                     Capability.STREAMING,
                     Capability.LONG_CONTEXT,
+                    Capability.STRUCTURED_OUTPUT,
                 ],
                 max_tokens=4096,
                 cost_per_1k_tokens={"input": 0.015, "output": 0.075},
@@ -63,7 +76,7 @@ class AnthropicProvider(BaseProvider):
                 },
             ),
             "claude-3-sonnet": ModelInfo(
-                name="claude-3-sonnet",
+                name="claude-sonnet-4-20250514",
                 provider="anthropic",
                 capabilities=[
                     Capability.TEXT,
@@ -94,7 +107,7 @@ class AnthropicProvider(BaseProvider):
                 },
             ),
             "claude-3-haiku": ModelInfo(
-                name="claude-3-haiku",
+                name="claude-3-haiku-20240307",
                 provider="anthropic",
                 capabilities=[
                     Capability.TEXT,
@@ -124,7 +137,7 @@ class AnthropicProvider(BaseProvider):
                 },
             ),
             "claude-3-5-sonnet": ModelInfo(
-                name="claude-3-5-sonnet",
+                name="claude-3-7-sonnet-20250219",
                 provider="anthropic",
                 capabilities=[
                     Capability.TEXT,
@@ -155,18 +168,132 @@ class AnthropicProvider(BaseProvider):
                     "reliability_score": 0.94,
                 },
             ),
+            "claude-3-5-haiku": ModelInfo(
+                name="claude-3-5-haiku-20241022",
+                provider="anthropic",
+                capabilities=[
+                    Capability.TEXT,
+                    Capability.VISION,
+                    Capability.REASONING,
+                    Capability.CODE,
+                    Capability.MATH,
+                    Capability.STREAMING,
+                    Capability.LONG_CONTEXT,
+                    Capability.STRUCTURED_OUTPUT,
+                ],
+                max_tokens=8192,
+                cost_per_1k_tokens={"input": 0.0008, "output": 0.004},
+                context_window=200000,
+                latency_ms=800,
+                benchmark_scores={
+                    "mmlu": 0.845,
+                    "human_eval": 0.689,
+                    "gpqa": 0.812,
+                    "aime": 0.889,
+                    "hellaswag": 0.945,
+                    "arc": 0.951,
+                    "truthfulqa": 0.62,
+                    "vqa": 0.765,
+                    "speech_recognition": 0.0,  # No audio capability
+                    "latency_ms": 800,
+                    "cost_efficiency": 0.95,
+                    "reliability_score": 0.92,
+                },
+            ),
+            "claude-3-5-opus": ModelInfo(
+                name="claude-opus-4-1-20250805",
+                provider="anthropic",
+                capabilities=[
+                    Capability.TEXT,
+                    Capability.VISION,
+                    Capability.REASONING,
+                    Capability.CODE,
+                    Capability.MATH,
+                    Capability.STREAMING,
+                    Capability.LONG_CONTEXT,
+                    Capability.STRUCTURED_OUTPUT,
+                ],
+                max_tokens=8192,
+                cost_per_1k_tokens={"input": 0.015, "output": 0.075},
+                context_window=200000,
+                latency_ms=2000,
+                benchmark_scores={
+                    "mmlu": 0.892,
+                    "human_eval": 0.745,
+                    "gpqa": 0.878,
+                    "aime": 0.934,
+                    "hellaswag": 0.965,
+                    "arc": 0.975,
+                    "truthfulqa": 0.68,
+                    "vqa": 0.812,
+                    "speech_recognition": 0.0,  # No audio capability
+                    "latency_ms": 2000,
+                    "cost_efficiency": 0.75,
+                    "reliability_score": 0.96,
+                },
+            ),
+            "claude-4-sonnet": ModelInfo(
+                name="claude-sonnet-4-20250514",
+                provider="anthropic",
+                capabilities=[
+                    Capability.TEXT,
+                    Capability.VISION,
+                    Capability.REASONING,
+                    Capability.CODE,
+                    Capability.MATH,
+                    Capability.STREAMING,
+                    Capability.LONG_CONTEXT,
+                    Capability.STRUCTURED_OUTPUT,
+                ],
+                max_tokens=8192,
+                cost_per_1k_tokens={"input": 0.003, "output": 0.015},
+                context_window=200000,
+                latency_ms=1000,
+                benchmark_scores={
+                    "mmlu": 0.912,
+                    "human_eval": 0.789,
+                    "gpqa": 0.901,
+                    "aime": 0.956,
+                    "hellaswag": 0.972,
+                    "arc": 0.982,
+                    "truthfulqa": 0.72,
+                    "vqa": 0.834,
+                    "speech_recognition": 0.0,  # No audio capability
+                    "latency_ms": 1000,
+                    "cost_efficiency": 0.88,
+                    "reliability_score": 0.97,
+                },
+            ),
         }
 
     async def _make_api_call(self, request: TaskRequest, model: str) -> str:
         """Make API call to Anthropic."""
+        # Validate model exists
+        if model not in self.models:
+            raise ModelNotFoundError(model, "anthropic")
+
+        # Validate model supports required capabilities
+        model_info = self.models[model]
+        if (
+            request.task_type == TaskType.VISION_ANALYSIS
+            and Capability.VISION not in model_info.capabilities
+        ):
+            raise ModelUnsupportedError(model, "anthropic", "vision")
+
+        # Check context length
+        if request.max_tokens and request.max_tokens > model_info.context_window:
+            raise ModelContextLengthExceededError(
+                model, "anthropic", request.max_tokens, model_info.context_window
+            )
+
         try:
             # Prepare messages
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
             api_params = {
-                "model": model,
-                "max_tokens": request.max_tokens or self.models[model].max_tokens,
+                "model": model_info.name,  # Use the actual model name from ModelInfo
+                "max_tokens": request.max_tokens or model_info.max_tokens,
                 "temperature": request.temperature,
                 "top_p": request.top_p,
                 "messages": messages,
@@ -176,34 +303,112 @@ class AnthropicProvider(BaseProvider):
             if hasattr(request, "system_prompt") and request.system_prompt:
                 api_params["system"] = request.system_prompt
 
+            # Add structured output if specified
+            # Anthropic supports structured output through tool use
+            if request.structured_output:
+                # Create a tool definition for structured output
+                tool_definition = {
+                    "name": "structured_output",
+                    "description": "Generate structured output according to the specified schema",
+                    "input_schema": {},
+                }
+
+                if (
+                    hasattr(request.structured_output, "__bases__")
+                    and BaseModel in request.structured_output.__bases__
+                ):
+                    # It's a Pydantic model class - convert to JSON schema
+                    schema = request.structured_output.model_json_schema()
+                    tool_definition["input_schema"] = schema
+                elif isinstance(request.structured_output, dict):
+                    # It's a JSON schema dict
+                    tool_definition["input_schema"] = request.structured_output
+                else:
+                    # Default to JSON object format
+                    tool_definition["input_schema"] = {"type": "object"}
+
+                # Add tools to the API call
+                api_params["tools"] = [tool_definition]
+                api_params["tool_choice"] = {
+                    "type": "tool",
+                    "name": "structured_output",
+                }
+
+                # Add instruction to use the tool
+                tool_instruction = "\n\nPlease use the structured_output tool to provide your response in the specified format."
+                if "system" in api_params:
+                    api_params["system"] += tool_instruction
+                else:
+                    api_params["system"] = tool_instruction
+
             # Make the API call
             response = await self.client.messages.create(**api_params)
 
             # Extract content
-            if response.content and response.content[0].text:
-                return response.content[0].text
+            if response.content:
+                if response.content[0].type == "text":
+                    return response.content[0].text
+                elif response.content[0].type == "tool_use":
+                    # Handle structured output from tool use
+                    tool_use = response.content[0]
+                    if tool_use.name == "structured_output":
+                        return tool_use.input
+                    else:
+                        return str(tool_use.input)
+                else:
+                    raise ValueError(
+                        f"Unexpected content type: {response.content[0].type}"
+                    )
             else:
                 raise ValueError("No content in Anthropic response")
 
+        except anthropic.APIConnectionError as e:
+            raise ProviderConnectionError(
+                "anthropic", f"Failed to connect to Anthropic API: {e}"
+            )
+        except anthropic.AuthenticationError as e:
+            raise ProviderAuthenticationError(
+                "anthropic", f"Authentication failed: {e}"
+            )
+        except anthropic.RateLimitError as e:
+            retry_after = getattr(e, "retry_after", None)
+            raise ProviderRateLimitError(
+                "anthropic",
+                retry_after=retry_after,
+                message=f"Rate limit exceeded: {e}",
+            )
+        except anthropic.APITimeoutError as e:
+            raise ProviderTimeoutError(
+                "anthropic",
+                timeout=getattr(e, "timeout", None),
+                message=f"Request timeout: {e}",
+            )
+        except anthropic.InternalServerError as e:
+            raise ProviderConnectionError("anthropic", f"Anthropic service error: {e}")
         except Exception as e:
-            raise RuntimeError(f"Anthropic API call failed: {e}")
+            raise ProviderConnectionError("anthropic", f"Unexpected error: {e}")
 
     async def _make_streaming_api_call(
         self, request: TaskRequest, model: str
     ) -> AsyncGenerator[str, None]:
         """Make streaming API call to Anthropic."""
         try:
+            # Validate model exists
+            if model not in self.models:
+                raise ModelNotFoundError(model, "anthropic")
+
+            model_info = self.models[model]
+
             # Prepare messages
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
             api_params = {
-                "model": model,
-                "max_tokens": request.max_tokens or self.models[model].max_tokens,
+                "model": model_info.name,  # Use the actual model name from ModelInfo
+                "max_tokens": request.max_tokens or model_info.max_tokens,
                 "temperature": request.temperature,
                 "top_p": request.top_p,
                 "messages": messages,
-                "stream": True,
             }
 
             # Add system message if available
@@ -215,8 +420,33 @@ class AnthropicProvider(BaseProvider):
                 async for text in stream.text_stream:
                     yield text
 
+        except anthropic.APIConnectionError as e:
+            raise ProviderConnectionError(
+                "anthropic", f"Failed to connect to Anthropic API: {e}"
+            )
+        except anthropic.AuthenticationError as e:
+            raise ProviderAuthenticationError(
+                "anthropic", f"Authentication failed: {e}"
+            )
+        except anthropic.RateLimitError as e:
+            retry_after = getattr(e, "retry_after", None)
+            raise ProviderRateLimitError(
+                "anthropic",
+                retry_after=retry_after,
+                message=f"Rate limit exceeded: {e}",
+            )
+        except anthropic.APITimeoutError as e:
+            raise ProviderTimeoutError(
+                "anthropic",
+                timeout=getattr(e, "timeout", None),
+                message=f"Request timeout: {e}",
+            )
+        except anthropic.InternalServerError as e:
+            raise ProviderConnectionError("anthropic", f"Anthropic service error: {e}")
         except Exception as e:
-            raise RuntimeError(f"Anthropic streaming API call failed: {e}")
+            raise ProviderConnectionError(
+                "anthropic", f"Unexpected streaming error: {e}"
+            )
 
     async def _make_embeddings_call(self, text: str, model: str) -> List[float]:
         """Make embeddings API call to Anthropic."""
@@ -234,7 +464,9 @@ class AnthropicProvider(BaseProvider):
             return [0.0] * 1536  # Standard embedding dimension
 
         except Exception as e:
-            raise RuntimeError(f"Anthropic embeddings not available: {e}")
+            raise ProviderConnectionError(
+                "anthropic", f"Anthropic embeddings not available: {e}"
+            )
 
     def _prepare_messages(self, request: TaskRequest) -> List[Dict[str, Any]]:
         """Prepare messages for Anthropic API."""

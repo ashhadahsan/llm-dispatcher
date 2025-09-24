@@ -5,154 +5,121 @@ This script provides easy setup and installation of the LLM-Dispatcher package
 with all its dependencies and configuration.
 """
 
+from setuptools import setup, find_packages
 import os
-import sys
-import subprocess
-from pathlib import Path
 
 
-def run_command(command: str, description: str) -> bool:
-    """Run a command and return success status."""
-    print(f"🔄 {description}...")
+# Read the README file
+def read_readme():
+    with open("README.md", "r", encoding="utf-8") as fh:
+        return fh.read()
+
+
+# Read requirements from pyproject.toml
+def read_requirements():
+    requirements = []
     try:
-        result = subprocess.run(
-            command, shell=True, check=True, capture_output=True, text=True
-        )
-        print(f"✅ {description} completed successfully")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"❌ {description} failed: {e}")
-        print(f"Error output: {e.stderr}")
-        return False
+        with open("requirements.txt", "r", encoding="utf-8") as fh:
+            requirements = [
+                line.strip() for line in fh if line.strip() and not line.startswith("#")
+            ]
+    except FileNotFoundError:
+        # Fallback to basic requirements if requirements.txt doesn't exist
+        requirements = [
+            "pydantic>=2.0.0",
+            "requests>=2.31.0",
+            "aiohttp>=3.8.0",
+            "tenacity>=8.0.0",
+            "openai>=1.0.0",
+            "anthropic>=0.7.0",
+            "google-generativeai>=0.3.0",
+            "tiktoken>=0.5.0",
+            "pillow>=9.0.0",
+            "pydub>=0.25.0",
+            "numpy>=1.21.0",
+            "pyyaml>=6.0",
+            "python-dotenv>=1.0.0",
+        ]
+    return requirements
 
 
-def check_python_version() -> bool:
-    """Check if Python version is compatible."""
-    if sys.version_info < (3, 8):
-        print("❌ Python 3.8 or higher is required")
-        return False
-    print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor} is compatible")
-    return True
-
-
-def install_dependencies() -> bool:
-    """Install package dependencies."""
-    commands = [
-        ("pip install --upgrade pip", "Upgrading pip"),
-        ("pip install -e .", "Installing LLM-Dispatcher package"),
-        ("pip install -e .[dev]", "Installing development dependencies"),
-    ]
-
-    for command, description in commands:
-        if not run_command(command, description):
-            return False
-    return True
-
-
-def setup_pre_commit() -> bool:
-    """Setup pre-commit hooks."""
-    return run_command("pre-commit install", "Setting up pre-commit hooks")
-
-
-def run_tests() -> bool:
-    """Run the test suite."""
-    return run_command("pytest tests/ -v", "Running tests")
-
-
-def create_config_file() -> bool:
-    """Create a default configuration file."""
-    config_path = Path("~/.llm-dispatcher/config.yaml")
-    config_path = config_path.expanduser()
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if not config_path.exists():
-        try:
-            import shutil
-
-            shutil.copy("examples/config.yaml", config_path)
-            print(f"✅ Created default configuration at {config_path}")
-            return True
-        except Exception as e:
-            print(f"❌ Failed to create config file: {e}")
-            return False
-    else:
-        print(f"✅ Configuration file already exists at {config_path}")
-        return True
-
-
-def create_env_template() -> bool:
-    """Create environment variables template."""
-    env_path = Path(".env.template")
-
-    env_content = """# LLM-Dispatcher Environment Variables Template
-# Copy this file to .env and fill in your API keys
-
-# OpenAI API Key
-OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# Anthropic API Key  
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
-
-# Google API Key
-GOOGLE_API_KEY=your-google-api-key-here
-
-# Optional: Custom configuration
-LLM_DISPATCHER_CONFIG_PATH=~/.llm-dispatcher/config.yaml
-LLM_DISPATCHER_LOG_LEVEL=INFO
-LLM_DISPATCHER_DATA_DIR=~/.llm-dispatcher
-"""
-
-    try:
-        with open(env_path, "w") as f:
-            f.write(env_content)
-        print(f"✅ Created environment template at {env_path}")
-        return True
-    except Exception as e:
-        print(f"❌ Failed to create env template: {e}")
-        return False
-
-
-def main():
-    """Main setup function."""
-    print("🚀 Setting up LLM-Dispatcher package...")
-    print("=" * 50)
-
-    # Check Python version
-    if not check_python_version():
-        sys.exit(1)
-
-    # Install dependencies
-    if not install_dependencies():
-        print("❌ Failed to install dependencies")
-        sys.exit(1)
-
-    # Setup pre-commit hooks
-    setup_pre_commit()
-
-    # Run tests
-    if not run_tests():
-        print("⚠️  Some tests failed, but continuing setup...")
-
-    # Create configuration files
-    create_config_file()
-    create_env_template()
-
-    print("\n" + "=" * 50)
-    print("🎉 LLM-Dispatcher setup completed successfully!")
-    print("\n📋 Next steps:")
-    print("1. Copy .env.template to .env and add your API keys")
-    print("2. Review the configuration at ~/.llm-dispatcher/config.yaml")
-    print("3. Try running the example: python examples/basic_usage.py")
-    print("\n📚 Documentation:")
-    print("- README.md: Basic usage and examples")
-    print("- examples/: More usage examples")
-    print("- tests/: Test suite and examples")
-    print("\n🔧 Development:")
-    print("- Run tests: pytest tests/")
-    print("- Format code: black src/ tests/")
-    print("- Type check: mypy src/")
-    print("\nHappy coding with LLM-Dispatcher! 🚀")
-
-
-if __name__ == "__main__":
-    main()
+setup(
+    name="llm-dispatcher",
+    version="1.0.0",
+    author="ashhadahsan",
+    author_email="ashhadahsan@gmail.com",
+    description="Intelligent LLM dispatching with performance-based routing, multimodal support, streaming, monitoring, and comprehensive analytics",
+    long_description=read_readme(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/ashhadahsan/llm-dispatcher",
+    project_urls={
+        "Bug Tracker": "https://github.com/ashhadahsan/llm-dispatcher/issues",
+        "Documentation": "https://llm-dispatcher.readthedocs.io",
+    },
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: Text Processing :: Linguistic",
+        "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    ],
+    package_dir={"": "src"},
+    packages=find_packages(where="src"),
+    python_requires=">=3.8",
+    install_requires=read_requirements(),
+    extras_require={
+        "dev": [
+            "pytest>=7.0.0",
+            "pytest-asyncio>=0.21.0",
+            "pytest-cov>=4.0.0",
+            "black>=23.0.0",
+            "isort>=5.12.0",
+            "flake8>=6.0.0",
+            "mypy>=1.0.0",
+            "pre-commit>=3.0.0",
+            "jupyter>=1.0.0",
+            "ipykernel>=6.0.0",
+        ],
+        "docs": [
+            "sphinx>=5.0.0",
+            "sphinx-rtd-theme>=1.2.0",
+            "myst-parser>=1.0.0",
+            "sphinx-autodoc-typehints>=1.19.0",
+        ],
+        "benchmark": [
+            "transformers>=4.30.0",
+            "torch>=2.0.0",
+            "accelerate>=0.20.0",
+            "datasets>=2.0.0",
+            "evaluate>=0.4.0",
+        ],
+    },
+    keywords=[
+        "llm",
+        "ai",
+        "openai",
+        "anthropic",
+        "google",
+        "machine-learning",
+        "nlp",
+        "routing",
+        "dispatch",
+        "multimodal",
+        "streaming",
+        "monitoring",
+        "analytics",
+        "caching",
+    ],
+    include_package_data=True,
+    zip_safe=False,
+)
