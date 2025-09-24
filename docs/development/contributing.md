@@ -81,7 +81,6 @@ We use a feature branch workflow:
    black .
    isort .
    flake8
-   mypy
    ```
 
 4. **Commit your changes**
@@ -136,13 +135,11 @@ We use the following tools for code quality:
 - **Black** - Code formatting
 - **isort** - Import sorting
 - **flake8** - Linting
-- **mypy** - Type checking
 
 **Configuration files:**
 
 - `pyproject.toml` - Black and isort configuration
 - `.flake8` - Flake8 configuration
-- `mypy.ini` - MyPy configuration
 
 ### Code Structure
 

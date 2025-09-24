@@ -73,7 +73,6 @@ LLM-Dispatcher uses several third-party libraries. Here are the main ones:
 - **black** - MIT License
 - **isort** - MIT License
 - **flake8** - MIT License
-- **mypy** - MIT License
 
 ## Commercial Use
 

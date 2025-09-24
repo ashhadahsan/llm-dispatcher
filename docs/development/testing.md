@@ -2,6 +2,33 @@
 
 Comprehensive testing guidelines and best practices for LLM-Dispatcher development.
 
+## Current Test Status
+
+**Test Coverage: 22%** (29/29 core tests passing) ✅
+
+### Test Results Summary
+
+| Test Category         | Tests | Status     | Coverage | Description                                    |
+| --------------------- | ----- | ---------- | -------- | ---------------------------------------------- |
+| **Core Tests**        | 27    | ✅ Passing | 98%      | Basic functionality, configurations, providers |
+| **Performance Tests** | 1     | ✅ Passing | 37%      | Latency and throughput testing                 |
+| **Benchmark Tests**   | 1     | ✅ Passing | 16%      | Metric calculations and validation             |
+
+### Quick Test Commands
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/llm_dispatcher --cov-report=html
+
+# Run specific categories
+pytest tests/test_basic.py                    # Core functionality
+pytest tests/test_performance.py              # Performance tests
+pytest tests/test_benchmark_utils.py          # Benchmark utilities
+```
+
 ## Overview
 
 Testing in LLM-Dispatcher includes:

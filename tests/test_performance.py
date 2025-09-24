@@ -15,7 +15,13 @@ import psutil
 import os
 
 from llm_dispatcher import LLMSwitch
-from llm_dispatcher.core import TaskType, TaskRequest, TaskResponse
+from llm_dispatcher.core import (
+    TaskType,
+    TaskRequest,
+    TaskResponse,
+    ModelInfo,
+    Capability,
+)
 from llm_dispatcher.config import SwitchConfig, OptimizationStrategy
 from llm_dispatcher.utils import PerformanceMonitor, BenchmarkManager
 from llm_dispatcher.providers import BaseProvider
@@ -25,14 +31,32 @@ class PerformanceTestProvider(BaseProvider):
     """Provider for performance testing."""
 
     def __init__(self, name: str, latency_ms: int = 100, success_rate: float = 1.0):
+        super().__init__(api_key="test_key", provider_name=name)
         self.name = name
+        self.provider_name = name
         self.latency_ms = latency_ms
         self.success_rate = success_rate
-        self.models = [f"{name}-model"]
+        self.models = {
+            f"{name}-model": ModelInfo(
+                name=f"{name}-model",
+                provider=name,
+                capabilities=[Capability.TEXT],
+                max_tokens=4000,
+                context_window=8000,
+                benchmark_scores={"mmlu": 0.8, "human_eval": 0.7},
+            )
+        }
         self.performance_metrics = {}
         self.health_status = {"status": "healthy", "last_check": datetime.now()}
+        self.request_count = 0
+        self.error_count = 0
+        self.total_latency = 0.0
 
-    async def _make_api_call(self, request: TaskRequest) -> TaskResponse:
+    def _initialize_models(self) -> None:
+        """Initialize models - already done in __init__."""
+        pass
+
+    async def _make_api_call(self, request: TaskRequest, model: str) -> str:
         """Simulate API call with controlled latency."""
         # Simulate network latency
         await asyncio.sleep(self.latency_ms / 1000.0)
@@ -44,15 +68,7 @@ class PerformanceTestProvider(BaseProvider):
             if random.random() > self.success_rate:
                 raise Exception(f"Simulated failure in {self.name}")
 
-        return TaskResponse(
-            content=f"Response from {self.name}",
-            model_used=f"{self.name}-model",
-            provider=self.name,
-            tokens_used=100,
-            cost=0.001,
-            latency_ms=self.latency_ms,
-            finish_reason="stop",
-        )
+        return f"Response from {self.name}"
 
     async def _make_streaming_api_call(self, request: TaskRequest):
         """Simulate streaming API call."""
@@ -93,12 +109,12 @@ class TestLatencyPerformance:
     @pytest.fixture
     def mixed_providers(self, fast_provider, slow_provider):
         """Create mix of fast and slow providers."""
-        return [fast_provider, slow_provider]
+        return {"fast_provider": fast_provider, "slow_provider": slow_provider}
 
     @pytest.mark.asyncio
     async def test_single_request_latency(self, fast_provider):
         """Test latency of single request."""
-        switch = LLMSwitch(providers=[fast_provider])
+        switch = LLMSwitch(providers={"fast_provider": fast_provider})
 
         request = TaskRequest(
             prompt="Test prompt",
@@ -113,7 +129,8 @@ class TestLatencyPerformance:
 
         # Should be close to provider latency (within 50ms tolerance)
         assert abs(actual_latency - fast_provider.latency_ms) < 50
-        assert response.latency_ms == fast_provider.latency_ms
+        # Allow for some execution overhead
+        assert abs(response.latency_ms - fast_provider.latency_ms) < 5
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_latency(self, mixed_providers):
@@ -134,7 +151,7 @@ class TestLatencyPerformance:
         total_time = (end_time - start_time) * 1000
 
         # Concurrent execution should be faster than sequential
-        sequential_time = sum(p.latency_ms for p in mixed_providers) * 10
+        sequential_time = sum(p.latency_ms for p in mixed_providers.values()) * 10
         assert total_time < sequential_time
 
         # All requests should complete
@@ -144,7 +161,7 @@ class TestLatencyPerformance:
     @pytest.mark.asyncio
     async def test_streaming_latency(self, fast_provider):
         """Test streaming response latency."""
-        switch = LLMSwitch(providers=[fast_provider])
+        switch = LLMSwitch(providers={"fast_provider": fast_provider})
 
         request = TaskRequest(
             prompt="Streaming test prompt",
@@ -171,7 +188,9 @@ class TestLatencyPerformance:
             side_effect=Exception("Fast provider failed")
         )
 
-        switch = LLMSwitch(providers=[fast_provider, slow_provider])
+        switch = LLMSwitch(
+            providers={"fast_provider": fast_provider, "slow_provider": slow_provider}
+        )
 
         request = TaskRequest(
             prompt="Fallback test prompt",
@@ -220,7 +239,9 @@ class TestThroughputPerformance:
     @pytest.mark.asyncio
     async def test_requests_per_second(self, high_throughput_provider):
         """Test requests per second capability."""
-        switch = LLMSwitch(providers=[high_throughput_provider])
+        switch = LLMSwitch(
+            providers={"high_throughput_provider": high_throughput_provider}
+        )
 
         request = TaskRequest(
             prompt="Throughput test prompt",
@@ -245,7 +266,9 @@ class TestThroughputPerformance:
     @pytest.mark.asyncio
     async def test_concurrent_throughput(self, high_throughput_provider):
         """Test throughput with concurrent requests."""
-        switch = LLMSwitch(providers=[high_throughput_provider])
+        switch = LLMSwitch(
+            providers={"high_throughput_provider": high_throughput_provider}
+        )
 
         request = TaskRequest(
             prompt="Concurrent throughput test",
@@ -305,7 +328,7 @@ class TestMemoryPerformance:
 
     def test_memory_usage_single_request(self, memory_test_provider):
         """Test memory usage for single request."""
-        switch = LLMSwitch(providers=[memory_test_provider])
+        switch = LLMSwitch(providers={"memory_test_provider": memory_test_provider})
 
         # Get initial memory usage
         process = psutil.Process(os.getpid())
@@ -332,7 +355,7 @@ class TestMemoryPerformance:
     @pytest.mark.asyncio
     async def test_memory_usage_high_load(self, memory_test_provider):
         """Test memory usage under high load."""
-        switch = LLMSwitch(providers=[memory_test_provider])
+        switch = LLMSwitch(providers={"memory_test_provider": memory_test_provider})
 
         # Get initial memory usage
         process = psutil.Process(os.getpid())
@@ -357,7 +380,9 @@ class TestMemoryPerformance:
     def test_cache_memory_usage(self, memory_test_provider):
         """Test memory usage with caching enabled."""
         config = SwitchConfig(enable_caching=True)
-        switch = LLMSwitch(providers=[memory_test_provider], config=config)
+        switch = LLMSwitch(
+            providers={"memory_test_provider": memory_test_provider}, config=config
+        )
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -454,7 +479,7 @@ class TestStressTesting:
     @pytest.mark.asyncio
     async def test_prolonged_high_load(self, stress_test_provider):
         """Test system under prolonged high load."""
-        switch = LLMSwitch(providers=[stress_test_provider])
+        switch = LLMSwitch(providers={"stress_test_provider": stress_test_provider})
 
         request = TaskRequest(
             prompt="Stress test prompt",
@@ -489,7 +514,7 @@ class TestStressTesting:
     @pytest.mark.asyncio
     async def test_memory_leak_detection(self, stress_test_provider):
         """Test for memory leaks under prolonged usage."""
-        switch = LLMSwitch(providers=[stress_test_provider])
+        switch = LLMSwitch(providers={"stress_test_provider": stress_test_provider})
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -524,7 +549,12 @@ class TestStressTesting:
             "reliable", latency_ms=50, success_rate=1.0
         )
 
-        switch = LLMSwitch(providers=[unreliable_provider, reliable_provider])
+        switch = LLMSwitch(
+            providers={
+                "unreliable_provider": unreliable_provider,
+                "reliable_provider": reliable_provider,
+            }
+        )
 
         request = TaskRequest(
             prompt="Error recovery test",
@@ -556,10 +586,12 @@ class TestScalabilityPerformance:
     async def test_multiple_providers_scalability(self):
         """Test performance with multiple providers."""
         # Create multiple providers
-        providers = [
-            PerformanceTestProvider(f"provider_{i}", latency_ms=50 + i * 10)
+        providers = {
+            f"provider_{i}": PerformanceTestProvider(
+                f"provider_{i}", latency_ms=50 + i * 10
+            )
             for i in range(10)
-        ]
+        }
 
         switch = LLMSwitch(providers=providers)
 
@@ -587,7 +619,11 @@ class TestScalabilityPerformance:
 
     def test_large_request_handling(self):
         """Test handling of large requests."""
-        switch = LLMSwitch(providers=[PerformanceTestProvider("large_request_test")])
+        switch = LLMSwitch(
+            providers={
+                "large_request_test": PerformanceTestProvider("large_request_test")
+            }
+        )
 
         # Create large request
         large_prompt = "Test prompt " * 1000  # Large prompt

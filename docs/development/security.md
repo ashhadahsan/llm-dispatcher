@@ -116,8 +116,8 @@ Security is a top priority for LLM-Dispatcher. This document outlines our securi
    # pyproject.toml
    [project]
    dependencies = [
-       "openai>=1.0.0,<2.0.0",
-       "anthropic>=0.3.0,<1.0.0",
+       "openai>=0.1.0,<2.0.0",
+       "anthropic>=0.3.0,<0.1.0",
    ]
    ```
 

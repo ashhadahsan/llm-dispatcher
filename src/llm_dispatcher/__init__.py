@@ -49,7 +49,7 @@ from .exceptions import (
     UnauthorizedAccessError,
 )
 
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 __author__ = "ashhadahsan"
 __email__ = "ashhadahsan@gmail.com"
 

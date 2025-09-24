@@ -34,7 +34,7 @@ exclude .DS_Store
 exclude *.egg-info
 exclude .coverage
 exclude .pytest_cache
-exclude .mypy_cache
+exclude .flake8_cache
 exclude .tox
 exclude .venv
 exclude venv

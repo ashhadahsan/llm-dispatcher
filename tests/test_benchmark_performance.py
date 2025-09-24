@@ -344,10 +344,10 @@ class TestBenchmarkPerformance:
                 return TaskResponse(
                     content="Success response",
                     provider="test_provider",
-                    model="test_model",
+                    model_used="test_model",
                     tokens_used=100,
                     cost=0.01,
-                    latency=1000,
+                    latency_ms=1000,
                 )
 
         mock_switch.process_request.side_effect = mixed_responses
@@ -390,10 +390,10 @@ class TestBenchmarkPerformance:
                 TaskResponse(
                     content="x" * content_size,  # Large content
                     provider="test_provider",
-                    model="test_model",
+                    model_used="test_model",
                     tokens_used=content_size // 10,
                     cost=content_size * 0.00001,
-                    latency=1000 + (i % 5) * 100,  # Varying latency
+                    latency_ms=1000 + (i % 5) * 100,  # Varying latency
                 )
             )
 
@@ -433,10 +433,11 @@ class TestBenchmarkPerformance:
             return TaskResponse(
                 content="Delayed response",
                 provider="test_provider",
-                model="test_model",
+                model_used="test_model",
                 tokens_used=100,
                 cost=0.01,
-                latency=100,
+                latency_ms=100,
+                finish_reason="stop",
             )
 
         mock_switch.process_request.side_effect = delayed_response
@@ -526,10 +527,10 @@ class TestBenchmarkPerformance:
                 TaskResponse(
                     content=f"Large response content {i} " * 100,  # Large content
                     provider=f"provider_{i % 3}",
-                    model=f"model_{i % 2}",
+                    model_used=f"model_{i % 2}",
                     tokens_used=1000 + i,
                     cost=0.01 + i * 0.0001,
-                    latency=1000 + i * 10,
+                    latency_ms=1000 + i * 10,
                 )
             )
 
@@ -589,10 +590,11 @@ class TestBenchmarkScalability:
             mock_response = TaskResponse(
                 content="Scale test response",
                 provider="test_provider",
-                model="test_model",
+                model_used="test_model",
                 tokens_used=100,
                 cost=0.01,
-                latency=1000,
+                latency_ms=1000,
+                finish_reason="stop",
             )
             mock_switch.process_request.return_value = mock_response
 
@@ -635,10 +637,11 @@ class TestBenchmarkScalability:
             return TaskResponse(
                 content="Concurrency test response",
                 provider="test_provider",
-                model="test_model",
+                model_used="test_model",
                 tokens_used=100,
                 cost=0.01,
-                latency=100,
+                latency_ms=100,
+                finish_reason="stop",
             )
 
         mock_switch.process_request.side_effect = fixed_delay_response
@@ -681,10 +684,11 @@ class TestBenchmarkScalability:
             mock_response = TaskResponse(
                 content="Memory scale test response",
                 provider="test_provider",
-                model="test_model",
+                model_used="test_model",
                 tokens_used=100,
                 cost=0.01,
-                latency=1000,
+                latency_ms=1000,
+                finish_reason="stop",
             )
             mock_switch.process_request.return_value = mock_response
 

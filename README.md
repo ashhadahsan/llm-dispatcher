@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Tests](https://img.shields.io/badge/tests-pytest-blue.svg)](https://pytest.org/)
 [![Coverage](https://codecov.io/gh/ashhadahsan/llm-dispatcher/branch/main/graph/badge.svg)](https://codecov.io/gh/ashhadahsan/llm-dispatcher)
-[![Coverage](https://img.shields.io/badge/coverage-47%25-red.svg)](https://github.com/ashhadahsan/llm-dispatcher)
+[![Coverage](https://img.shields.io/badge/coverage-22%25-red.svg)](https://github.com/ashhadahsan/llm-dispatcher)
 
 **LLM-Dispatcher** is an intelligent Python package that automatically selects the best Large Language Model (LLM) for your specific task based on performance metrics, cost optimization, and real-time availability.
 
@@ -175,6 +175,46 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 3. Make your changes
 4. Add tests
 5. Submit a pull request
+
+## 🧪 Testing
+
+LLM-Dispatcher includes comprehensive tests to ensure reliability and performance.
+
+### Test Coverage
+
+Current test coverage: **22%** (29/29 core tests passing)
+
+- ✅ **Core Functionality**: All basic tests passing
+- ✅ **Performance Tests**: Latency and throughput tests working
+- ✅ **Benchmark Utils**: Metric calculation and validation tests
+- ✅ **Provider Integration**: OpenAI provider tests
+- ✅ **Configuration**: Switch configuration and validation tests
+
+### Running Tests
+
+```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/llm_dispatcher --cov-report=html
+
+# Run specific test categories
+pytest tests/test_basic.py                    # Core functionality
+pytest tests/test_performance.py              # Performance tests
+pytest tests/test_benchmark_utils.py          # Benchmark utilities
+```
+
+### Test Categories
+
+| Category        | Tests | Status     | Description                                    |
+| --------------- | ----- | ---------- | ---------------------------------------------- |
+| **Core**        | 27    | ✅ Passing | Basic functionality, configurations, providers |
+| **Performance** | 1     | ✅ Passing | Latency and throughput testing                 |
+| **Benchmarks**  | 1     | ✅ Passing | Metric calculations and validation             |
 
 ## 📄 License
 

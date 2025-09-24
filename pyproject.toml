@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-dispatcher"
-version = "1.0.0"
+version = "0.1.0"
 description = "Intelligent LLM dispatching with performance-based routing, multimodal support, streaming, monitoring, and comprehensive analytics"
 readme = "README.md"
 license = {text = "MIT"}
@@ -12,7 +12,7 @@ authors = [
     {name = "ashhadahsan", email = "ashhadahsan@gmail.com"}
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
@@ -126,7 +126,6 @@ dev = [
     "black>=23.0.0",
     "isort>=5.12.0",
     "flake8>=6.0.0",
-    "mypy>=1.0.0",
     "pre-commit>=3.0.0",
     "jupyter>=1.0.0",
     "ipykernel>=6.0.0",
@@ -185,17 +184,6 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true

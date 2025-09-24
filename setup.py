@@ -45,7 +45,7 @@ def read_requirements():
 
 setup(
     name="llm-dispatcher",
-    version="1.0.0",
+    version="0.1.0",
     author="ashhadahsan",
     author_email="ashhadahsan@gmail.com",
     description="Intelligent LLM dispatching with performance-based routing, multimodal support, streaming, monitoring, and comprehensive analytics",
@@ -57,7 +57,7 @@ setup(
         "Documentation": "https://llm-dispatcher.readthedocs.io",
     },
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
@@ -85,7 +85,6 @@ setup(
             "black>=23.0.0",
             "isort>=5.12.0",
             "flake8>=6.0.0",
-            "mypy>=1.0.0",
             "pre-commit>=3.0.0",
             "jupyter>=1.0.0",
             "ipykernel>=6.0.0",

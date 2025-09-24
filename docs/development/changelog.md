@@ -2,7 +2,7 @@
 
 All notable changes to LLM-Dispatcher will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/0.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Security improvements
 
-## [1.0.0] - 2025-09-22
+## [0.1.0] - 2025-09-22
 
 ### Added
 
@@ -161,7 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Release Notes
 
-### Version 1.0.0 (2025-09-22)
+### Version 0.1.0 (2025-09-22)
 
 **Major Release - Production Ready**
 
@@ -267,7 +267,7 @@ For security issues, please email security@llm-dispatcher.com instead of using t
 
 ## Changelog Format
 
-This changelog follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format:
+This changelog follows the [Keep a Changelog](https://keepachangelog.com/en/0.1.0/) format:
 
 - **Added** - New features
 - **Changed** - Changes to existing functionality

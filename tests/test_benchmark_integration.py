@@ -98,42 +98,47 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Once upon a time, there was a robot named ArtBot who discovered the joy of painting...",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=150,
                 cost=0.045,
-                latency=1200,
+                latency_ms=1200,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Machine learning is a subset of artificial intelligence that enables computers to learn and improve from experience...",
                 provider="anthropic",
-                model="claude-3-sonnet",
+                model_used="claude-3-sonnet",
                 tokens_used=200,
                 cost=0.038,
-                latency=1100,
+                latency_ms=1100,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1",
                 provider="google",
-                model="gemini-2.5-pro",
+                model_used="gemini-2.5-pro",
                 tokens_used=180,
                 cost=0.025,
-                latency=900,
+                latency_ms=900,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="AI-Powered Innovation: Transforming Tomorrow, Today",
                 provider="openai",
-                model="gpt-3.5-turbo",
+                model_used="gpt-3.5-turbo",
                 tokens_used=50,
                 cost=0.015,
-                latency=800,
+                latency_ms=800,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Renewable energy offers numerous benefits including reduced greenhouse gas emissions, energy independence, and long-term cost savings...",
                 provider="anthropic",
-                model="claude-3-haiku",
+                model_used="claude-3-haiku",
                 tokens_used=120,
                 cost=0.022,
-                latency=700,
+                latency_ms=700,
+                finish_reason="stop",
             ),
         ]
 
@@ -172,42 +177,47 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Story content...",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=200,
                 cost=0.06,  # Higher cost for GPT-4
-                latency=1200,
+                latency_ms=1200,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="ML explanation...",
                 provider="anthropic",
-                model="claude-3-sonnet",
+                model_used="claude-3-sonnet",
                 tokens_used=180,
                 cost=0.034,  # Medium cost for Claude
-                latency=1100,
+                latency_ms=1100,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Code content...",
                 provider="google",
-                model="gemini-2.5-pro",
+                model_used="gemini-2.5-pro",
                 tokens_used=220,
                 cost=0.028,  # Lower cost for Gemini
-                latency=900,
+                latency_ms=900,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Slogan content...",
                 provider="openai",
-                model="gpt-3.5-turbo",
+                model_used="gpt-3.5-turbo",
                 tokens_used=80,
                 cost=0.012,  # Lower cost for GPT-3.5
-                latency=800,
+                latency_ms=800,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Summary content...",
                 provider="anthropic",
-                model="claude-3-haiku",
+                model_used="claude-3-haiku",
                 tokens_used=150,
                 cost=0.027,  # Medium cost for Claude Haiku
-                latency=700,
+                latency_ms=700,
+                finish_reason="stop",
             ),
         ]
 
@@ -250,34 +260,38 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Tokyo",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=10,
                 cost=0.003,
-                latency=500,
+                latency_ms=500,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Cherry blossoms bloom\nGentle breeze through ancient trees\nNature's peaceful song",
                 provider="anthropic",
-                model="claude-3-sonnet",
+                model_used="claude-3-sonnet",
                 tokens_used=25,
                 cost=0.005,
-                latency=800,
+                latency_ms=800,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="100",
                 provider="google",
-                model="gemini-2.5-pro",
+                model_used="gemini-2.5-pro",
                 tokens_used=5,
                 cost=0.001,
-                latency=300,
+                latency_ms=300,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Jupiter",
                 provider="openai",
-                model="gpt-3.5-turbo",
+                model_used="gpt-3.5-turbo",
                 tokens_used=8,
                 cost=0.002,
-                latency=400,
+                latency_ms=400,
+                finish_reason="stop",
             ),
         ]
 
@@ -351,26 +365,29 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Artificial intelligence is the simulation of human intelligence in machines",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=30,
                 cost=0.009,
-                latency=600,
+                latency_ms=600,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Machine learning involves algorithms that can learn from data",
                 provider="anthropic",
-                model="claude-3-sonnet",
+                model_used="claude-3-sonnet",
                 tokens_used=25,
                 cost=0.005,
-                latency=700,
+                latency_ms=700,
+                finish_reason="stop",
             ),
             TaskResponse(
                 content="Deep learning uses neural networks with multiple layers",
                 provider="google",
-                model="gemini-2.5-pro",
+                model_used="gemini-2.5-pro",
                 tokens_used=28,
                 cost=0.004,
-                latency=500,
+                latency_ms=500,
+                finish_reason="stop",
             ),
         ]
 
@@ -408,10 +425,10 @@ class TestBenchmarkIntegration:
                 TaskResponse(
                     content=f"Response for: {prompt[:50]}...",
                     provider="openai",
-                    model="gpt-4",
+                    model_used="gpt-4",
                     tokens_used=100,
                     cost=0.03,
-                    latency=1000,
+                    latency_ms=1000,
                 )
             )
 
@@ -421,10 +438,10 @@ class TestBenchmarkIntegration:
                 TaskResponse(
                     content=test_case["expected"],
                     provider="anthropic",
-                    model="claude-3-sonnet",
+                    model_used="claude-3-sonnet",
                     tokens_used=20,
                     cost=0.004,
-                    latency=600,
+                    latency_ms=600,
                 )
             )
 
@@ -472,10 +489,11 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Test response",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=100,
                 cost=0.03,
-                latency=1000,
+                latency_ms=1000,
+                finish_reason="stop",
             )
             for _ in range(len(sample_prompts) * 2)  # 2 iterations
         ]
@@ -521,10 +539,11 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Test response",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=100,
                 cost=0.03,
-                latency=1000,
+                latency_ms=1000,
+                finish_reason="stop",
             )
             for _ in range(len(sample_prompts) * 2)
         ]
@@ -585,10 +604,11 @@ class TestBenchmarkIntegration:
             return TaskResponse(
                 content="Successful response",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=100,
                 cost=0.03,
-                latency=1000,
+                latency_ms=1000,
+                finish_reason="stop",
             )
 
         mock_llm_switch.process_request.side_effect = mixed_responses
@@ -619,10 +639,11 @@ class TestBenchmarkIntegration:
             return TaskResponse(
                 content="Delayed response",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=100,
                 cost=0.03,
-                latency=100,
+                latency_ms=100,
+                finish_reason="stop",
             )
 
         mock_llm_switch.process_request.side_effect = delayed_response
@@ -666,10 +687,11 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="Test response " * 1000,  # Large response
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=1000,
                 cost=0.3,
-                latency=1000,
+                latency_ms=1000,
+                finish_reason="stop",
             )
             for _ in range(len(sample_prompts) * 10)  # Many iterations
         ]
@@ -704,28 +726,31 @@ class TestBenchmarkIntegration:
             TaskResponse(
                 content="OpenAI response",
                 provider="openai",
-                model="gpt-4",
+                model_used="gpt-4",
                 tokens_used=100,
                 cost=0.03,
-                latency=1200,
+                latency_ms=1200,
+                finish_reason="stop",
             ),
             # Anthropic responses (medium cost, high latency)
             TaskResponse(
                 content="Anthropic response",
                 provider="anthropic",
-                model="claude-3-sonnet",
+                model_used="claude-3-sonnet",
                 tokens_used=100,
                 cost=0.025,
-                latency=1400,
+                latency_ms=1400,
+                finish_reason="stop",
             ),
             # Google responses (lower cost, low latency)
             TaskResponse(
                 content="Google response",
                 provider="google",
-                model="gemini-2.5-pro",
+                model_used="gemini-2.5-pro",
                 tokens_used=100,
                 cost=0.02,
-                latency=800,
+                latency_ms=800,
+                finish_reason="stop",
             ),
         ]
 

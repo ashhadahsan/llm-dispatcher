@@ -125,7 +125,6 @@ isort src/ tests/
 
 # Lint code
 flake8 src/ tests/
-mypy src/
 
 # Run tests
 pytest
@@ -228,7 +227,7 @@ docker run -it --rm -v $(pwd):/app llm-dispatcher-dev
 
 The project uses GitHub Actions for CI/CD. Workflows are defined in `.github/workflows/`:
 
-- **CI**: Runs tests, linting, and type checking
+- **CI**: Runs tests and linting
 - **Release**: Builds and publishes packages
 - **Documentation**: Builds and deploys documentation
 
@@ -241,7 +240,6 @@ The project uses GitHub Actions for CI/CD. Workflows are defined in `.github/wor
 # Or run individual checks
 ./scripts/lint.sh
 ./scripts/test.sh
-./scripts/type-check.sh
 ```
 
 ## Release Process
@@ -257,7 +255,7 @@ The project uses GitHub Actions for CI/CD. Workflows are defined in `.github/wor
 ### 2. Create Release Branch
 
 ```bash
-git checkout -b release/v1.0.0
+git checkout -b release/v0.1.0
 ```
 
 ### 3. Build and Test
@@ -278,8 +276,8 @@ python -c "import llm_dispatcher; print('Import successful')"
 
 ```bash
 # Tag release
-git tag v1.0.0
-git push origin v1.0.0
+git tag v0.1.0
+git push origin v0.1.0
 
 # Create GitHub release
 # Upload built packages

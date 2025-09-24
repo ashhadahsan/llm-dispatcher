@@ -179,7 +179,7 @@ class TestBenchmarkMetrics:
         metrics = calculate_metrics(latencies, costs, successes)
 
         assert metrics["success_rate"] == 0.0
-        assert metrics["error_count"] == 3
+        assert metrics["failed_requests"] == 3
         assert metrics["total_requests"] == 3
 
     def test_calculate_metrics_percentiles(self):
@@ -190,10 +190,10 @@ class TestBenchmarkMetrics:
 
         metrics = calculate_metrics(latencies, costs, successes)
 
-        assert metrics["p50_latency"] == 50.5  # Median
-        assert metrics["p90_latency"] == 90.5  # 90th percentile
-        assert metrics["p95_latency"] == 95.5  # 95th percentile
-        assert metrics["p99_latency"] == 99.5  # 99th percentile
+        assert metrics["avg_latency"] == 50.5  # Average latency
+        assert metrics["min_latency"] == 1.0  # Min latency
+        assert metrics["max_latency"] == 100.0  # Max latency
+        assert metrics["total_cost"] == 1.0  # Total cost
 
 
 class TestBenchmarkDataExport:

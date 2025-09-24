@@ -38,7 +38,7 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install with specific versions
-pip install llm-dispatcher==1.0.0
+pip install llm-dispatcher==0.1.0
 
 # Check for conflicts
 pip check

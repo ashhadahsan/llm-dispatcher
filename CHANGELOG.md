@@ -2,10 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/0.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-09-22
+## [0.1.0] - 2025-09-22
 
 ### Added
 
@@ -114,7 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mock providers for testing
 
 - **Quality Assurance**
-  - Type checking with mypy
+  - Code linting with flake8
   - Code formatting with Black
   - Linting with flake8
   - Pre-commit hooks
@@ -127,11 +127,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - aiohttp>=3.8.0 for async HTTP
   - tenacity>=8.0.0 for retry logic
   - numpy>=1.21.0 for numerical operations
-  - scikit-learn>=1.0.0 for ML features
+  - scikit-learn>=0.1.0 for ML features
 
 - **Provider Dependencies**
 
-  - openai>=1.0.0 for OpenAI integration
+  - openai>=0.1.0 for OpenAI integration
   - anthropic>=0.7.0 for Anthropic integration
   - google-generativeai>=0.3.0 for Google integration
 
@@ -208,7 +208,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Migration Guide
 
-### From 0.1.0 to 1.0.0
+### From 0.1.0 to 0.1.0
 
 #### Breaking Changes
 

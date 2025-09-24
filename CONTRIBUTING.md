@@ -131,9 +131,6 @@ We welcome several types of contributions:
    # Run linting
    flake8 src/
 
-   # Run type checking
-   mypy src/
-
    # Format code
    black src/ tests/
    isort src/ tests/
@@ -213,7 +210,7 @@ A clear and concise description of what you expected to happen.
 
 - OS: [e.g. macOS, Windows, Linux]
 - Python Version: [e.g. 3.8, 3.9, 3.10]
-- Package Version: [e.g. 1.0.0]
+- Package Version: [e.g. 0.1.0]
 
 **Additional Context**
 Add any other context about the problem here.
@@ -320,7 +317,6 @@ We follow [PEP 8](https://pep8.org/) with some modifications:
 - **Black**: Code formatting
 - **isort**: Import sorting
 - **flake8**: Linting
-- **mypy**: Type checking
 - **pre-commit**: Git hooks
 
 ### Running Style Checks
@@ -334,9 +330,6 @@ isort src/ tests/
 
 # Lint code
 flake8 src/
-
-# Type check
-mypy src/
 ```
 
 ### Pre-commit Hooks
@@ -368,7 +361,7 @@ We follow [Semantic Versioning](https://semver.org/):
 
 1. **Update Version**: Update version in `pyproject.toml`
 2. **Update Changelog**: Add release notes to `CHANGELOG.md`
-3. **Create Release Branch**: `git checkout -b release/v1.0.0`
+3. **Create Release Branch**: `git checkout -b release/v0.1.0`
 4. **Final Testing**: Run full test suite
 5. **Create Pull Request**: Merge release branch
 6. **Tag Release**: Create git tag

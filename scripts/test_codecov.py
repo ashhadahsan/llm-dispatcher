@@ -39,7 +39,7 @@ def test_codecov_setup():
         else:
             print("❌ coverage.xml file not found")
             coverage_success = False
-            
+
         # Check if htmlcov directory exists
         htmlcov_dir = Path(__file__).parent.parent / "htmlcov"
         if htmlcov_dir.exists():
@@ -47,17 +47,17 @@ def test_codecov_setup():
         else:
             print("❌ HTML coverage report not found")
             coverage_success = False
-            
+
         # Extract coverage percentage from output (even if tests fail)
         output = result.stdout + result.stderr
-        coverage_match = re.search(r'TOTAL\s+\d+\s+\d+\s+(\d+)%', output)
-        
+        coverage_match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", output)
+
         if coverage_match:
             coverage_percentage = int(coverage_match.group(1))
             print(f"📊 Coverage percentage: {coverage_percentage}%")
         else:
             print("⚠️  Could not extract coverage percentage from output")
-            
+
         return coverage_success
 
     except Exception as e:

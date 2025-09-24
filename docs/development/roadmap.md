@@ -2,7 +2,7 @@
 
 This document outlines the planned development roadmap for LLM-Dispatcher.
 
-## Current Version: 1.0.0
+## Current Version: 0.1.0
 
 ### ✅ Completed Features
 
@@ -17,7 +17,7 @@ This document outlines the planned development roadmap for LLM-Dispatcher.
 - **Streaming**: Real-time response streaming
 - **Multimodal Support**: Text, vision, and audio processing
 
-## Version 1.1.0 (Q1 2026)
+## Version 0.1.1 (Q1 2026)
 
 ### 🚀 Planned Features
 
@@ -46,17 +46,9 @@ This document outlines the planned development roadmap for LLM-Dispatcher.
   - [ ] WebSocket support for real-time communication
   - [ ] CLI tool for common operations
 
-## Version 1.2.0 (Q2 2026)
+## Version 0.1.2 (Q2 2026)
 
 ### 🔧 Advanced Features
-
-#### Enterprise Enhancements
-
-- [ ] **Advanced Security**
-  - [ ] Zero-trust architecture
-  - [ ] Advanced threat detection
-  - [ ] Data loss prevention (DLP)
-  - [ ] End-to-end encryption
 
 #### Analytics & Monitoring
 
@@ -74,7 +66,7 @@ This document outlines the planned development roadmap for LLM-Dispatcher.
   - [ ] LlamaIndex integration
   - [ ] Haystack integration
 
-## Version 2.0.0 (Q3 2025)
+## Version 0.1.3 (Q3 2025)
 
 ### 🌟 Major Features
 
