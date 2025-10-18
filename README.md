@@ -94,11 +94,12 @@ def analyze_image(image_path: str) -> dict:
 
 ## 📚 Documentation
 
-- [Installation Guide](docs/installation.md)
-- [Quick Start Tutorial](docs/quickstart.md)
-- [Advanced Configuration](docs/configuration.md)
-- [API Reference](docs/api.md)
-- [Benchmark Data](docs/benchmarks.md)
+- [**📖 Full Documentation**](https://llm-dispatcher.readthedocs.io/) - Complete guides and API reference
+- [Installation Guide](https://llm-dispatcher.readthedocs.io/en/latest/getting-started/installation/)
+- [Quick Start Tutorial](https://llm-dispatcher.readthedocs.io/en/latest/getting-started/quickstart/)
+- [Advanced Configuration](https://llm-dispatcher.readthedocs.io/en/latest/getting-started/configuration/)
+- [API Reference](https://llm-dispatcher.readthedocs.io/en/latest/api/)
+- [Benchmark Data](https://llm-dispatcher.readthedocs.io/en/latest/benchmarks/)
 - [Contributing](CONTRIBUTING.md)
 
 ## 🧪 Development
