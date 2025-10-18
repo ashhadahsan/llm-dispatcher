@@ -98,8 +98,6 @@ def analyze_image(image_path: str) -> dict:
 - [Installation Guide](https://llm-dispatcher.readthedocs.io/en/latest/getting-started/installation/)
 - [Quick Start Tutorial](https://llm-dispatcher.readthedocs.io/en/latest/getting-started/quickstart/)
 - [Advanced Configuration](https://llm-dispatcher.readthedocs.io/en/latest/getting-started/configuration/)
-- [API Reference](https://llm-dispatcher.readthedocs.io/en/latest/api/)
-- [Benchmark Data](https://llm-dispatcher.readthedocs.io/en/latest/benchmarks/)
 - [Contributing](CONTRIBUTING.md)
 
 ## 🧪 Development
