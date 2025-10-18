@@ -45,7 +45,7 @@ def read_requirements():
 
 setup(
     name="llm-dispatcher",
-    version="0.1.0",
+    version="1.0.0",
     author="ashhadahsan",
     author_email="ashhadahsan@gmail.com",
     description="Intelligent LLM dispatching with performance-based routing, multimodal support, streaming, monitoring, and comprehensive analytics",
