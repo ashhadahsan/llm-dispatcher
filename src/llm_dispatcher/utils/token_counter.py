@@ -5,10 +5,10 @@ This module provides token counting functionality for different LLM providers
 to ensure accurate cost estimation and context window management.
 """
 
-from typing import Dict, List, Optional, Union
-import tiktoken
-import re
 from abc import ABC, abstractmethod
+from typing import Dict, List, Union
+
+import tiktoken
 
 
 class TokenCounter(ABC):
@@ -17,17 +17,14 @@ class TokenCounter(ABC):
     @abstractmethod
     def count_tokens(self, text: str) -> int:
         """Count tokens in the given text."""
-        pass
 
     @abstractmethod
     def count_tokens_batch(self, texts: List[str]) -> List[int]:
         """Count tokens for multiple texts."""
-        pass
 
     @abstractmethod
     def truncate_to_tokens(self, text: str, max_tokens: int) -> str:
         """Truncate text to fit within token limit."""
-        pass
 
 
 class OpenAITokenCounter(TokenCounter):

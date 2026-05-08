@@ -5,14 +5,14 @@ This module provides configuration management functionality including
 settings, provider configurations, and switching rules.
 """
 
-from .settings import (
-    SwitchConfig,
-    ProviderConfig,
-    SwitchingRules,
-    OptimizationStrategy,
-    FallbackStrategy,
-)
 from .config_loader import ConfigLoader
+from .settings import (
+    FallbackStrategy,
+    OptimizationStrategy,
+    ProviderConfig,
+    SwitchConfig,
+    SwitchingRules,
+)
 
 __all__ = [
     "SwitchConfig",

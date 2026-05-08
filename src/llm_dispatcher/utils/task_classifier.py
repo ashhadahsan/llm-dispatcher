@@ -5,10 +5,9 @@ This module provides intelligent task classification to automatically
 determine the most appropriate task type for LLM requests.
 """
 
-import re
-from typing import Dict, List, Optional, Tuple, Any
-from enum import Enum
 import logging
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..core.base import TaskType
 

@@ -5,16 +5,16 @@ This module provides comprehensive analysis tools for benchmark results includin
 statistical analysis, provider comparisons, and performance insights.
 """
 
+import json
 import statistics
-from typing import Dict, List, Optional, Any, Union, Tuple
 from dataclasses import dataclass
 from datetime import datetime
-import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .performance_benchmark import BenchmarkResult
 from .cost_benchmark import CostBenchmarkResult
 from .custom_benchmark import CustomBenchmarkResult
+from .performance_benchmark import BenchmarkResult
 
 
 @dataclass

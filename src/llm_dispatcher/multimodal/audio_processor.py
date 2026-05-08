@@ -6,27 +6,28 @@ format conversion, analysis, feature extraction, and audio optimization.
 """
 
 import base64
-import io
-import wave
 import hashlib
-from typing import Dict, List, Optional, Any, Tuple, Union
+import io
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-import logging
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 try:
     import librosa
-    import soundfile as sf
     from pydub import AudioSegment
 
     AUDIO_LIBS_AVAILABLE = True
 except ImportError:
     AUDIO_LIBS_AVAILABLE = False
+
     # Create a dummy AudioSegment class for type hints when pydub is not available
     class AudioSegment:
         pass
+
 
 logger = logging.getLogger(__name__)
 

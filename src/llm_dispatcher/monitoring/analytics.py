@@ -6,18 +6,16 @@ for monitoring LLM performance, usage patterns, and system health.
 """
 
 import json
-import sqlite3
-import asyncio
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
 import logging
-from pathlib import Path
+import sqlite3
 import statistics
-from collections import defaultdict, Counter
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .metrics_collector import MetricsCollector, MetricType, MetricPoint
 from ..utils.performance_monitor import PerformanceMonitor
+from .metrics_collector import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -370,7 +368,7 @@ class AnalyticsEngine:
 
                 # Get overall statistics
                 query = f"""
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_requests,
                         SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_requests,
                         SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed_requests,
@@ -378,7 +376,7 @@ class AnalyticsEngine:
                         SUM(cost) as total_cost,
                         AVG(cost) as avg_cost,
                         SUM(tokens_used) as total_tokens
-                    FROM requests 
+                    FROM requests
                     WHERE {where_clause}
                 """
 
@@ -393,7 +391,7 @@ class AnalyticsEngine:
 
                 # Get latency percentiles
                 latency_query = f"""
-                    SELECT latency_ms FROM requests 
+                    SELECT latency_ms FROM requests
                     WHERE {where_clause} AND success = 1
                     ORDER BY latency_ms
                 """
@@ -463,11 +461,11 @@ class AnalyticsEngine:
 
                 # Get hourly usage patterns
                 hourly_query = """
-                    SELECT 
+                    SELECT
                         strftime('%H', timestamp) as hour,
                         COUNT(*) as requests,
                         AVG(latency_ms) as avg_latency
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY hour
                     ORDER BY hour
@@ -490,12 +488,12 @@ class AnalyticsEngine:
 
                 # Get provider preferences
                 provider_query = """
-                    SELECT 
+                    SELECT
                         provider,
                         COUNT(*) as requests,
                         AVG(latency_ms) as avg_latency,
                         SUM(cost) as total_cost
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY provider
                 """
@@ -518,10 +516,10 @@ class AnalyticsEngine:
 
                 # Get model preferences
                 model_query = """
-                    SELECT 
+                    SELECT
                         model,
                         COUNT(*) as requests
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY model
                 """
@@ -538,10 +536,10 @@ class AnalyticsEngine:
 
                 # Get task distribution
                 task_query = """
-                    SELECT 
+                    SELECT
                         task_type,
                         COUNT(*) as requests
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY task_type
                 """
@@ -558,10 +556,10 @@ class AnalyticsEngine:
 
                 # Get cost trends (daily)
                 cost_query = """
-                    SELECT 
+                    SELECT
                         DATE(timestamp) as date,
                         SUM(cost) as daily_cost
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY date
                     ORDER BY date
@@ -602,13 +600,13 @@ class AnalyticsEngine:
 
                 # Get provider health scores
                 provider_health_query = """
-                    SELECT 
+                    SELECT
                         provider,
                         COUNT(*) as total_requests,
                         SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_requests,
                         AVG(latency_ms) as avg_latency,
                         SUM(cost) as total_cost
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY provider
                 """
@@ -643,12 +641,12 @@ class AnalyticsEngine:
 
                 # Get response time metrics
                 response_times_query = """
-                    SELECT 
+                    SELECT
                         provider,
                         AVG(latency_ms) as avg_latency,
                         MIN(latency_ms) as min_latency,
                         MAX(latency_ms) as max_latency
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ? AND success = 1
                     GROUP BY provider
                 """
@@ -663,11 +661,11 @@ class AnalyticsEngine:
 
                 # Get error rates
                 error_rates_query = """
-                    SELECT 
+                    SELECT
                         provider,
                         COUNT(*) as total_requests,
                         SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed_requests
-                    FROM requests 
+                    FROM requests
                     WHERE timestamp >= ?
                     GROUP BY provider
                 """
@@ -750,7 +748,7 @@ class AnalyticsEngine:
     ) -> Dict[str, Dict[str, Any]]:
         """Get provider statistics."""
         query = f"""
-            SELECT 
+            SELECT
                 provider,
                 COUNT(*) as total_requests,
                 SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_requests,
@@ -758,7 +756,7 @@ class AnalyticsEngine:
                 SUM(cost) as total_cost,
                 AVG(cost) as avg_cost,
                 SUM(tokens_used) as total_tokens
-            FROM requests 
+            FROM requests
             WHERE {where_clause}
             GROUP BY provider
         """
@@ -786,13 +784,13 @@ class AnalyticsEngine:
     ) -> Dict[str, Dict[str, Any]]:
         """Get model statistics."""
         query = f"""
-            SELECT 
+            SELECT
                 model,
                 COUNT(*) as total_requests,
                 SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_requests,
                 AVG(latency_ms) as avg_latency,
                 SUM(cost) as total_cost
-            FROM requests 
+            FROM requests
             WHERE {where_clause}
             GROUP BY model
         """
@@ -817,13 +815,13 @@ class AnalyticsEngine:
     ) -> Dict[str, Dict[str, Any]]:
         """Get task type statistics."""
         query = f"""
-            SELECT 
+            SELECT
                 task_type,
                 COUNT(*) as total_requests,
                 SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_requests,
                 AVG(latency_ms) as avg_latency,
                 SUM(cost) as total_cost
-            FROM requests 
+            FROM requests
             WHERE {where_clause}
             GROUP BY task_type
         """
@@ -848,10 +846,10 @@ class AnalyticsEngine:
     ) -> Dict[str, int]:
         """Get error analysis."""
         query = f"""
-            SELECT 
+            SELECT
                 error_message,
                 COUNT(*) as error_count
-            FROM requests 
+            FROM requests
             WHERE {where_clause} AND success = 0 AND error_message IS NOT NULL
             GROUP BY error_message
             ORDER BY error_count DESC

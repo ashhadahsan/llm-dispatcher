@@ -6,61 +6,49 @@ testing, multi-dimensional assessment, task-specific evaluation, and consistency
 """
 
 import asyncio
+import statistics
 import time
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from datetime import datetime
-import json
-import statistics
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Optional dependencies for advanced evaluation
 try:
+    from datasets import Dataset
     from ragas import evaluate
+    from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import (
-        Faithfulness,
-        ResponseRelevancy,
-        ContextPrecision,
-        ContextRecall,
         AnswerCorrectness,
         AnswerRelevancy,
         AnswerSimilarity,
-        ContextRelevancy,
-        ContextUtilization,
         ResponseCompleteness,
-        ResponseConsistency,
         ResponseConciseness,
-        ResponseTone,
-        ResponseFormat,
+        ResponseConsistency,
+        ResponseRelevancy,
     )
     from ragas.run_config import RunConfig
-    from ragas.llms import LangchainLLMWrapper
-    from datasets import Dataset
 
     RAGAS_AVAILABLE = True
 except ImportError:
     RAGAS_AVAILABLE = False
 
 try:
-    from langchain_openai import ChatOpenAI
     from langchain_anthropic import ChatAnthropic
     from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
 
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 try:
-    from sentence_transformers import SentenceTransformer
-    from sklearn.metrics.pairwise import cosine_similarity
-    import numpy as np
+    pass
 
     SEMANTIC_AVAILABLE = True
 except ImportError:
     SEMANTIC_AVAILABLE = False
 
-from ..core.base import LLMProvider, TaskRequest, TaskResponse, TaskType
-from ..providers.base_provider import BaseProvider
+from ..core.base import LLMProvider, TaskRequest, TaskType
 
 
 @dataclass
@@ -343,7 +331,7 @@ class QualityBenchmark:
             # Fallback to direct provider usage
             for provider in self.providers:
                 provider_responses = []
-                provider_start_time = time.time()
+                time.time()
 
                 for test_case in self.test_cases:
                     for iteration in range(self.iterations):

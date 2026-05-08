@@ -5,17 +5,15 @@ This module provides custom benchmarking tools for testing specific use cases
 and scenarios with custom evaluation criteria.
 """
 
-import asyncio
+import json
+import statistics
 import time
-from typing import Dict, List, Optional, Any, Union, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-import statistics
-import json
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from ..core.base import LLMProvider, TaskRequest, TaskResponse, TaskType
-from ..exceptions import BenchmarkError
+from ..core.base import LLMProvider, TaskRequest, TaskType
 
 
 @dataclass

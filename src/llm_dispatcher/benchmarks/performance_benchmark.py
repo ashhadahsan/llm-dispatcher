@@ -6,16 +6,15 @@ throughput, and other performance metrics across different LLM providers.
 """
 
 import asyncio
+import json
+import statistics
 import time
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from datetime import datetime
-import statistics
-import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from ..core.base import LLMProvider, TaskRequest, TaskResponse, TaskType
-from ..exceptions import BenchmarkError
+from ..core.base import LLMProvider, TaskRequest, TaskType
 
 
 @dataclass

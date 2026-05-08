@@ -5,48 +5,43 @@ This module provides automated, human, and hybrid evaluation methods
 for assessing LLM response quality.
 """
 
-import asyncio
+import json
+import statistics
 import time
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from datetime import datetime
-import statistics
-import json
+from typing import Dict, List, Optional
 
 # Optional dependencies for advanced evaluation
 try:
+    from datasets import Dataset
     from ragas import evaluate
+    from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import (
-        Faithfulness,
-        ResponseRelevancy,
         AnswerCorrectness,
-        AnswerRelevancy,
-        AnswerSimilarity,
         ResponseCompleteness,
         ResponseConsistency,
-        ResponseConciseness,
+        ResponseRelevancy,
     )
     from ragas.run_config import RunConfig
-    from ragas.llms import LangchainLLMWrapper
-    from datasets import Dataset
 
     RAGAS_AVAILABLE = True
 except ImportError:
     RAGAS_AVAILABLE = False
 
 try:
-    from langchain_openai import ChatOpenAI
     from langchain_anthropic import ChatAnthropic
     from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
 
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 try:
+    import numpy as np
     from sentence_transformers import SentenceTransformer
     from sklearn.metrics.pairwise import cosine_similarity
-    import numpy as np
 
     SEMANTIC_AVAILABLE = True
 except ImportError:

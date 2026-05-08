@@ -5,12 +5,10 @@ This module manages the integration of real benchmark data from various sources
 including MMLU, HumanEval, GPQA, AIME, and other credible benchmarks.
 """
 
-from typing import Dict, List, Optional, Any
+import json
 from dataclasses import dataclass
 from datetime import datetime
-import json
-import os
-from pathlib import Path
+from typing import Dict, List, Optional
 
 from ..core.base import PerformanceMetrics, TaskType
 

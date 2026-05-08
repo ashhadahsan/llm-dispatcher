@@ -5,14 +5,14 @@ This module provides statistical analysis, trend analysis, and comparative
 analysis tools for quality benchmark results.
 """
 
-import statistics
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-import numpy as np
-from datetime import datetime, timedelta
 import json
+import statistics
+from dataclasses import dataclass
+from typing import Dict, List
 
-from .quality_benchmark import QualityResults, ProviderMetrics
+import numpy as np
+
+from .quality_benchmark import ProviderMetrics, QualityResults
 
 
 @dataclass
@@ -339,7 +339,7 @@ class QualityAnalyzer:
         sum_y = sum(y)
         sum_xy = sum(x[i] * y[i] for i in range(n))
         sum_x2 = sum(x[i] ** 2 for i in range(n))
-        sum_y2 = sum(y[i] ** 2 for i in range(n))
+        sum(y[i] ** 2 for i in range(n))
 
         # Calculate slope and intercept
         slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)

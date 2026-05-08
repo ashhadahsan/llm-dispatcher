@@ -6,13 +6,11 @@ usage patterns, and health metrics in real-time.
 """
 
 import asyncio
-import json
-import time
-from typing import Dict, List, Optional, Any, Callable
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict
 
-from .analytics import AnalyticsEngine, PerformanceReport, UsagePattern, SystemHealth
+from .analytics import AnalyticsEngine
 from .metrics_collector import MetricsCollector
 
 logger = logging.getLogger(__name__)

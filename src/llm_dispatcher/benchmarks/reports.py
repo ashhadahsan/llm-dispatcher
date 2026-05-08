@@ -6,15 +6,11 @@ results including HTML reports, charts, and custom report templates.
 """
 
 import json
-import os
-from typing import Dict, List, Optional, Any
 from datetime import datetime
-from pathlib import Path
-import base64
+from typing import Any, Dict
 
 try:
     import matplotlib.pyplot as plt
-    import seaborn as sns
 
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
@@ -22,15 +18,14 @@ except ImportError:
 
 try:
     import plotly.graph_objects as go
-    import plotly.express as px
     from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-from .quality_benchmark import QualityResults
 from .analysis import QualityAnalyzer
+from .quality_benchmark import QualityResults
 
 
 class QualityReporter:
@@ -216,27 +211,27 @@ class QualityReporter:
             <h1>Quality Benchmark Report</h1>
             <p class="timestamp">Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
         </header>
-        
+
         <section class="summary">
             <h2>Executive Summary</h2>
             {self._generate_summary_section()}
         </section>
-        
+
         <section class="provider-comparison">
             <h2>Provider Comparison</h2>
             {self._generate_provider_comparison_section()}
         </section>
-        
+
         <section class="task-analysis">
             <h2>Task Type Analysis</h2>
             {self._generate_task_analysis_section()}
         </section>
-        
+
         <section class="statistical-analysis">
             <h2>Statistical Analysis</h2>
             {self._generate_statistical_analysis_section()}
         </section>
-        
+
         <section class="recommendations">
             <h2>Recommendations</h2>
             {self._generate_recommendations_section()}
@@ -256,7 +251,7 @@ class QualityReporter:
             padding: 0;
             background-color: #f5f5f5;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -264,41 +259,41 @@ class QualityReporter:
             background-color: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        
+
         header {
             text-align: center;
             border-bottom: 2px solid #007acc;
             padding-bottom: 20px;
             margin-bottom: 30px;
         }
-        
+
         h1 {
             color: #007acc;
             margin: 0;
         }
-        
+
         .timestamp {
             color: #666;
             font-style: italic;
         }
-        
+
         section {
             margin-bottom: 40px;
         }
-        
+
         h2 {
             color: #333;
             border-left: 4px solid #007acc;
             padding-left: 15px;
         }
-        
+
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin: 20px 0;
         }
-        
+
         .metric-card {
             background: #f8f9fa;
             padding: 20px;
@@ -306,39 +301,39 @@ class QualityReporter:
             text-align: center;
             border: 1px solid #e9ecef;
         }
-        
+
         .metric-value {
             font-size: 2em;
             font-weight: bold;
             color: #007acc;
         }
-        
+
         .metric-label {
             color: #666;
             margin-top: 5px;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
         }
-        
+
         th, td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
-        
+
         th {
             background-color: #007acc;
             color: white;
         }
-        
+
         tr:hover {
             background-color: #f5f5f5;
         }
-        
+
         .recommendation {
             background: #e8f4fd;
             padding: 15px;

@@ -5,11 +5,12 @@ This module defines the configuration data structures and default settings
 for the LLM-Dispatcher package.
 """
 
-from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, field_validator
-from enum import Enum
 import os
+from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class OptimizationStrategy(str, Enum):
