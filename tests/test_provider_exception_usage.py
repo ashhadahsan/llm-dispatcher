@@ -5,30 +5,32 @@ This module shows how custom exceptions should be used in practice
 within provider implementations and integration scenarios.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-from llm_dispatcher.exceptions import (
-    ProviderError,
-    ProviderConnectionError,
-    ProviderAuthenticationError,
-    ProviderRateLimitError,
-    ProviderQuotaExceededError,
-    ProviderTimeoutError,
-    ModelError,
-    ModelNotFoundError,
-    ModelUnsupportedError,
-    ModelContextLengthExceededError,
-    CostLimitExceededError,
-    FallbackExhaustedError,
-    NoAvailableProvidersError,
+
+from llm_dispatcher.config.settings import (
+    FallbackStrategy,
+    OptimizationStrategy,
+    SwitchConfig,
+    SwitchingRules,
 )
 from llm_dispatcher.core.base import TaskRequest, TaskType
 from llm_dispatcher.core.switch_engine import LLMSwitch
-from llm_dispatcher.config.settings import (
-    SwitchConfig,
-    SwitchingRules,
-    OptimizationStrategy,
-    FallbackStrategy,
+from llm_dispatcher.exceptions import (
+    CostLimitExceededError,
+    FallbackExhaustedError,
+    ModelContextLengthExceededError,
+    ModelError,
+    ModelNotFoundError,
+    ModelUnsupportedError,
+    NoAvailableProvidersError,
+    ProviderAuthenticationError,
+    ProviderConnectionError,
+    ProviderError,
+    ProviderQuotaExceededError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
 )
 
 

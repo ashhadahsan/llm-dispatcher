@@ -4,10 +4,11 @@ Pytest configuration and fixtures for LLM-Dispatcher tests.
 This module provides shared fixtures and configuration for all tests.
 """
 
-import pytest
-import os
 import asyncio
+import os
 from unittest.mock import Mock, patch
+
+import pytest
 from dotenv import load_dotenv
 
 # Load environment variables

@@ -5,10 +5,11 @@ This module tests the environment setup, configuration loading,
 and basic package functionality.
 """
 
-import pytest
 import os
 import sys
 from pathlib import Path
+
+import pytest
 from dotenv import load_dotenv
 
 # Add src to path for imports
@@ -31,15 +32,15 @@ class TestEnvironmentSetup:
         """Test that all package modules can be imported."""
         try:
             from llm_dispatcher import (
-                LLMSwitch,
-                llm_dispatcher,
-                LLMProvider,
-                TaskType,
-                Capability,
                 BenchmarkManager,
+                Capability,
+                LLMProvider,
+                LLMSwitch,
                 SwitchConfig,
-                init_config,
+                TaskType,
                 get_config,
+                init_config,
+                llm_dispatcher,
             )
 
             assert True  # If we get here, imports worked
@@ -50,10 +51,10 @@ class TestEnvironmentSetup:
         """Test that core modules can be imported."""
         try:
             from llm_dispatcher.core.base import (
-                TaskRequest,
-                TaskResponse,
                 ModelInfo,
                 PerformanceMetrics,
+                TaskRequest,
+                TaskResponse,
             )
             from llm_dispatcher.core.switch_engine import LLMSwitch
 
@@ -64,10 +65,10 @@ class TestEnvironmentSetup:
     def test_provider_imports(self):
         """Test that provider modules can be imported."""
         try:
-            from llm_dispatcher.providers.openai_provider import OpenAIProvider
             from llm_dispatcher.providers.anthropic_provider import AnthropicProvider
-            from llm_dispatcher.providers.google_provider import GoogleProvider
             from llm_dispatcher.providers.base_provider import BaseProvider
+            from llm_dispatcher.providers.google_provider import GoogleProvider
+            from llm_dispatcher.providers.openai_provider import OpenAIProvider
 
             assert True
         except ImportError as e:
@@ -89,8 +90,8 @@ class TestEnvironmentSetup:
     def test_config_imports(self):
         """Test that configuration modules can be imported."""
         try:
-            from llm_dispatcher.config.settings import SwitchConfig, ProviderConfig
-            from llm_dispatcher.config.config_loader import init_config, get_config
+            from llm_dispatcher.config.config_loader import get_config, init_config
+            from llm_dispatcher.config.settings import ProviderConfig, SwitchConfig
 
             assert True
         except ImportError as e:

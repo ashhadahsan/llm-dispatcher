@@ -5,17 +5,18 @@ This module shows how to use the OpenAI provider for various tasks
 and serves as documentation for developers.
 """
 
-import pytest
 import asyncio
 import os
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+from llm_dispatcher.core.base import Capability, TaskRequest, TaskType
 from llm_dispatcher.providers.openai_provider import OpenAIProvider
-from llm_dispatcher.core.base import TaskRequest, TaskType, Capability
 
 
 class TestOpenAIExamples:

@@ -5,19 +5,20 @@ This module contains performance tests that measure the efficiency
 and scalability of the benchmark system itself.
 """
 
-import pytest
 import asyncio
-import time
-import psutil
 import os
+import time
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List, Dict, Any
+
+import psutil
+import pytest
 
 from llm_dispatcher.benchmarks import (
-    PerformanceBenchmark,
-    CostBenchmark,
-    QualityBenchmark,
     BenchmarkRunner,
+    CostBenchmark,
+    PerformanceBenchmark,
+    QualityBenchmark,
 )
 from llm_dispatcher.core.base import TaskRequest, TaskResponse, TaskType
 

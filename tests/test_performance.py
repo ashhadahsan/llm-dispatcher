@@ -5,26 +5,27 @@ This module contains performance and load tests to ensure
 the system can handle production workloads efficiently.
 """
 
-import pytest
 import asyncio
-import time
-import statistics
-from unittest.mock import Mock, AsyncMock
-from datetime import datetime, timedelta
-import psutil
 import os
+import statistics
+import time
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, Mock
+
+import psutil
+import pytest
 
 from llm_dispatcher import LLMSwitch
+from llm_dispatcher.config import OptimizationStrategy, SwitchConfig
 from llm_dispatcher.core import (
-    TaskType,
+    Capability,
+    ModelInfo,
     TaskRequest,
     TaskResponse,
-    ModelInfo,
-    Capability,
+    TaskType,
 )
-from llm_dispatcher.config import SwitchConfig, OptimizationStrategy
-from llm_dispatcher.utils import PerformanceMonitor, BenchmarkManager
 from llm_dispatcher.providers import BaseProvider
+from llm_dispatcher.utils import BenchmarkManager, PerformanceMonitor
 
 
 class PerformanceTestProvider(BaseProvider):

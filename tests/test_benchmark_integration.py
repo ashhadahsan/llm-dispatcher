@@ -5,25 +5,26 @@ This module contains integration tests that test the benchmark system
 with real or near-real scenarios.
 """
 
-import pytest
 import asyncio
-import time
-import tempfile
 import os
+import tempfile
+import time
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List, Dict, Any
 
+import pytest
+
+from llm_dispatcher import LLMSwitch
 from llm_dispatcher.benchmarks import (
-    PerformanceBenchmark,
-    CostBenchmark,
-    QualityBenchmark,
-    CustomBenchmark,
-    BenchmarkRunner,
     BenchmarkAnalyzer,
     BenchmarkReporter,
+    BenchmarkRunner,
+    CostBenchmark,
+    CustomBenchmark,
+    PerformanceBenchmark,
+    QualityBenchmark,
 )
 from llm_dispatcher.core.base import TaskRequest, TaskResponse, TaskType
-from llm_dispatcher import LLMSwitch
 
 
 class TestBenchmarkIntegration:
@@ -675,8 +676,9 @@ class TestBenchmarkIntegration:
     @pytest.mark.asyncio
     async def test_benchmark_memory_usage(self, sample_prompts, mock_llm_switch):
         """Test benchmark memory usage with large datasets."""
-        import psutil
         import os
+
+        import psutil
 
         # Get initial memory usage
         process = psutil.Process(os.getpid())

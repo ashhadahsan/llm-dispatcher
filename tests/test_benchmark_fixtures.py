@@ -5,22 +5,23 @@ This module contains shared fixtures, utilities, and helper functions
 for benchmark testing.
 """
 
-import pytest
 import asyncio
-import tempfile
 import os
+import tempfile
+from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock
-from typing import List, Dict, Any, Optional
 
+import pytest
+
+from llm_dispatcher import LLMSwitch
 from llm_dispatcher.benchmarks import (
-    PerformanceBenchmark,
-    CostBenchmark,
-    QualityBenchmark,
-    CustomBenchmark,
     BenchmarkRunner,
+    CostBenchmark,
+    CustomBenchmark,
+    PerformanceBenchmark,
+    QualityBenchmark,
 )
 from llm_dispatcher.core.base import TaskRequest, TaskResponse, TaskType
-from llm_dispatcher import LLMSwitch
 
 
 class BenchmarkTestFixtures:

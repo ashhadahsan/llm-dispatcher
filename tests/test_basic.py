@@ -5,14 +5,15 @@ This module contains basic tests to verify the core functionality
 of the LLM-Dispatcher package.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
-from llm_dispatcher.core.base import TaskType, Capability, TaskRequest
+import pytest
+
+from llm_dispatcher.config.settings import SwitchConfig
+from llm_dispatcher.core.base import Capability, TaskRequest, TaskType
 from llm_dispatcher.utils.benchmark_manager import BenchmarkManager
 from llm_dispatcher.utils.task_classifier import TaskClassifier
-from llm_dispatcher.config.settings import SwitchConfig
 
 
 class TestBenchmarkManager:

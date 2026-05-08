@@ -5,24 +5,25 @@ This module contains comprehensive integration tests that verify
 end-to-end functionality across multiple components.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
-import tempfile
 import os
+import tempfile
 from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from llm_dispatcher import LLMSwitch, llm_dispatcher
-from llm_dispatcher.core import TaskType, Capability, TaskRequest, TaskResponse
 from llm_dispatcher.config import (
-    SwitchConfig,
-    OptimizationStrategy,
     FallbackStrategy,
+    OptimizationStrategy,
+    SwitchConfig,
     SwitchingRules,
 )
+from llm_dispatcher.core import Capability, TaskRequest, TaskResponse, TaskType
+from llm_dispatcher.multimodal import MediaValidator, MultimodalAnalyzer
 from llm_dispatcher.providers import BaseProvider
 from llm_dispatcher.utils import BenchmarkManager, CostCalculator, PerformanceMonitor
-from llm_dispatcher.multimodal import MultimodalAnalyzer, MediaValidator
 
 
 class MockProvider(BaseProvider):
@@ -35,7 +36,7 @@ class MockProvider(BaseProvider):
         model_names = models or []
         self.models = {}
         for model_name in model_names:
-            from llm_dispatcher.core.base import ModelInfo, Capability
+            from llm_dispatcher.core.base import Capability, ModelInfo
 
             self.models[model_name] = ModelInfo(
                 name=model_name,
@@ -319,8 +320,9 @@ class TestMultimodalIntegration:
     @pytest.fixture
     def sample_image_data(self):
         """Create sample image data for testing."""
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         img = Image.new("RGB", (100, 100), color="red")
         img_bytes = io.BytesIO()

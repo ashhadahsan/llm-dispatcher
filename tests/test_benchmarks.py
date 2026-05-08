@@ -5,20 +5,21 @@ This module contains comprehensive test cases for all benchmark functionality
 including performance, cost, quality, and custom benchmarks.
 """
 
-import pytest
 import asyncio
 import time
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List, Dict, Any
+
+import pytest
 
 from llm_dispatcher.benchmarks import (
-    PerformanceBenchmark,
-    CostBenchmark,
-    QualityBenchmark,
-    CustomBenchmark,
-    BenchmarkRunner,
     BenchmarkAnalyzer,
     BenchmarkReporter,
+    BenchmarkRunner,
+    CostBenchmark,
+    CustomBenchmark,
+    PerformanceBenchmark,
+    QualityBenchmark,
 )
 from llm_dispatcher.core.base import TaskRequest, TaskResponse, TaskType
 from llm_dispatcher.exceptions import BenchmarkError

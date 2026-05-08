@@ -5,30 +5,31 @@ This module contains comprehensive tests for the multimodal analysis,
 image processing, audio processing, and media validation capabilities.
 """
 
-import pytest
 import base64
 import io
 from unittest.mock import Mock, patch
-from PIL import Image
+
 import numpy as np
+import pytest
+from PIL import Image
 
 from llm_dispatcher.multimodal import (
-    ImageProcessor,
-    ImageFormat,
-    ImageQuality,
-    ImageMetadata,
-    AudioProcessor,
-    AudioFormat,
-    AudioQuality,
-    AudioMetadata,
-    MultimodalAnalyzer,
     AnalysisType,
+    AudioFormat,
+    AudioMetadata,
+    AudioProcessor,
+    AudioQuality,
     ComplexityLevel,
-    MediaValidator,
+    ImageFormat,
+    ImageMetadata,
+    ImageProcessor,
+    ImageQuality,
     MediaType,
-    ValidationSeverity,
+    MediaValidator,
+    MultimodalAnalyzer,
     ValidationIssue,
     ValidationResult,
+    ValidationSeverity,
 )
 
 
