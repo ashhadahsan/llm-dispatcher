@@ -6,13 +6,12 @@ threshold-based alerts, anomaly detection, and notification management.
 """
 
 import asyncio
+import logging
 import time
-from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import logging
-import json
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -369,8 +368,7 @@ class AlertManager:
             return f"High cost: ${metric_value:.4f} (threshold: ${rule.threshold:.4f})"
         elif rule.alert_type == AlertType.AVAILABILITY:
             return f"Low availability: {metric_value:.2%} (threshold: {rule.threshold:.2%})"
-        else:
-            return f"Alert triggered: {rule.metric_type} = {metric_value} {rule.condition} {rule.threshold}"
+        return f"Alert triggered: {rule.metric_type} = {metric_value} {rule.condition} {rule.threshold}"
 
     async def _send_notifications(self, alert: Alert, rule: AlertRule) -> None:
         """Send notifications for an alert."""
@@ -467,7 +465,7 @@ class AlertManager:
         total_rules = len(self.alert_rules)
         enabled_rules = len([r for r in self.alert_rules.values() if r.enabled])
 
-        severity_counts = {}
+        severity_counts: Dict[str, int] = {}
         for alert in self.active_alerts.values():
             severity = alert.severity.value
             severity_counts[severity] = severity_counts.get(severity, 0) + 1

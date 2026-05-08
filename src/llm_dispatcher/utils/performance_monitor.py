@@ -5,14 +5,14 @@ This module provides real-time monitoring of LLM performance metrics,
 including latency, success rates, and quality scores.
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+import json
+import statistics
+import threading
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from collections import defaultdict, deque
-import statistics
-import json
-import threading
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class PerformanceMetric(str, Enum):
@@ -285,8 +285,8 @@ class PerformanceMonitor:
                 score = stats.avg_quality_score / max(stats.avg_cost_per_request, 0.001)
             elif metric == PerformanceMetric.AVAILABILITY:
                 score = stats.availability_score
-            else:
-                score = 0.0
+            else:  # pragma: no cover
+                score = 0.0  # type: ignore[unreachable]
 
             rankings.append((provider, model, score))
 
@@ -335,7 +335,7 @@ class PerformanceMonitor:
         for snapshot in self.performance_history:
             providers_models.add((snapshot.provider, snapshot.model))
 
-        overview = {
+        overview: Dict[str, Any] = {
             "total_providers": len(set(p for p, m in providers_models)),
             "total_models": len(providers_models),
             "total_requests": len(self.performance_history),

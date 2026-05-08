@@ -5,14 +5,14 @@ This module provides utility functions for benchmark configuration validation,
 data processing, formatting, and helper functions.
 """
 
-import json
 import csv
-import uuid
+import json
+import statistics
 import time
-from typing import List, Dict, Any, Optional, Union, Tuple
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-import statistics
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 def validate_benchmark_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
@@ -380,7 +380,7 @@ def aggregate_benchmark_metrics(
     Returns:
         Aggregated metrics by group
     """
-    groups = {}
+    groups: Dict[str, Dict[str, Any]] = {}
 
     for result in results:
         group_key = result.get(group_by, "unknown")
@@ -407,7 +407,7 @@ def aggregate_benchmark_metrics(
             groups[group_key]["tokens_per_dollar"].append(result["tokens_per_dollar"])
 
     # Calculate aggregated metrics
-    aggregated = {}
+    aggregated: Dict[str, Dict[str, float]] = {}
     for group_key, data in groups.items():
         aggregated[group_key] = {
             "count": data["count"],
@@ -611,8 +611,16 @@ def compare_benchmark_results(
     norm2 = normalize_benchmark_results(results2)
 
     # Calculate metrics for each set
-    metrics1 = calculate_metrics([r["latency_ms"] for r in norm1])
-    metrics2 = calculate_metrics([r["latency_ms"] for r in norm2])
+    metrics1 = calculate_metrics(
+        [r["latency_ms"] for r in norm1],
+        [r["total_cost"] for r in norm1],
+        [r["success_rate"] >= 1.0 for r in norm1],
+    )
+    metrics2 = calculate_metrics(
+        [r["latency_ms"] for r in norm2],
+        [r["total_cost"] for r in norm2],
+        [r["success_rate"] >= 1.0 for r in norm2],
+    )
 
     # Calculate improvement percentages
     latency_improvement = (
@@ -752,8 +760,8 @@ def dict_to_benchmark_data(data: Dict[str, Any], data_type: str = "dict") -> Any
         from collections import namedtuple
 
         # Create a dynamic namedtuple
-        keys = list(data.keys())
-        BenchmarkData = namedtuple("BenchmarkData", keys)
+        keys: List[str] = list(data.keys())
+        BenchmarkData = namedtuple("BenchmarkData", keys)  # type: ignore[misc]
         return BenchmarkData(**data)
     else:
         # Default to dict

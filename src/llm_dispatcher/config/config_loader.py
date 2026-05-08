@@ -5,14 +5,15 @@ This module provides functionality to load configuration from various sources
 including files, environment variables, and programmatic settings.
 """
 
-import os
 import json
-import yaml
-from typing import Dict, Any, Optional, Union
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from .settings import SwitchConfig, ProviderConfig, DEFAULT_CONFIG
+import yaml
+
+from .settings import DEFAULT_CONFIG, SwitchConfig
 
 logger = logging.getLogger(__name__)
 
@@ -81,28 +82,28 @@ class ConfigLoader:
 
     def _load_from_file(self, filepath: str) -> Dict[str, Any]:
         """Load configuration from a file."""
-        filepath = Path(filepath)
+        path = Path(filepath)
 
-        if not filepath.exists():
-            raise FileNotFoundError(f"Configuration file not found: {filepath}")
+        if not path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {path}")
 
         try:
-            with open(filepath, "r") as f:
-                if filepath.suffix.lower() in [".yaml", ".yml"]:
+            with open(path, "r") as f:
+                if path.suffix.lower() in [".yaml", ".yml"]:
                     return yaml.safe_load(f) or {}
-                elif filepath.suffix.lower() == ".json":
+                elif path.suffix.lower() == ".json":
                     return json.load(f) or {}
                 else:
                     raise ValueError(
-                        f"Unsupported configuration file format: {filepath.suffix}"
+                        f"Unsupported configuration file format: {path.suffix}"
                     )
         except Exception as e:
-            logger.error(f"Failed to load configuration file {filepath}: {e}")
+            logger.error(f"Failed to load configuration file {path}: {e}")
             raise
 
     def _load_from_env(self, prefix: str) -> Dict[str, Any]:
         """Load configuration from environment variables."""
-        config_data = {}
+        config_data: Dict[str, Any] = {}
 
         # Map environment variables to configuration keys
         env_mappings = {
@@ -235,23 +236,23 @@ class ConfigLoader:
 
     def save_config(self, config: SwitchConfig, filepath: str) -> None:
         """Save configuration to a file."""
-        filepath = Path(filepath)
+        path = Path(filepath)
 
         # Ensure directory exists
-        filepath.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(filepath, "w") as f:
-                if filepath.suffix.lower() in [".yaml", ".yml"]:
+            with open(path, "w") as f:
+                if path.suffix.lower() in [".yaml", ".yml"]:
                     yaml.dump(config.to_dict(), f, default_flow_style=False, indent=2)
-                elif filepath.suffix.lower() == ".json":
+                elif path.suffix.lower() == ".json":
                     json.dump(config.to_dict(), f, indent=2)
                 else:
                     raise ValueError(
-                        f"Unsupported configuration file format: {filepath.suffix}"
+                        f"Unsupported configuration file format: {path.suffix}"
                     )
         except Exception as e:
-            logger.error(f"Failed to save configuration to {filepath}: {e}")
+            logger.error(f"Failed to save configuration to {path}: {e}")
             raise
 
     def create_default_config_file(self, filepath: str) -> None:

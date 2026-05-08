@@ -6,15 +6,14 @@ cost, usage, and quality metrics with real-time aggregation and streaming.
 """
 
 import asyncio
-import time
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from collections import defaultdict, deque
-import threading
 import json
 import logging
+import threading
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Callable, DefaultDict, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +158,7 @@ class MetricsCollector:
         tokens_used: Optional[int] = None,
     ) -> None:
         """Record comprehensive request metrics."""
-        now = datetime.now()
+        datetime.now()
 
         # Latency
         self.record_metric(MetricType.LATENCY, provider, model, latency_ms)
@@ -326,7 +325,6 @@ class MetricsCollector:
         """Aggregate metrics for the current window."""
         # This would implement real-time aggregation logic
         # For now, we'll just update the aggregations cache
-        pass
 
     async def _cleanup_old_metrics(self) -> None:
         """Remove old metrics beyond retention period."""
@@ -410,9 +408,9 @@ class MetricsCollector:
         recent_metrics = [m for m in self.metrics_buffer if m.timestamp > recent_cutoff]
 
         # Group by type
-        by_type = defaultdict(int)
-        by_provider = defaultdict(int)
-        by_model = defaultdict(int)
+        by_type: DefaultDict[str, int] = defaultdict(int)
+        by_provider: DefaultDict[str, int] = defaultdict(int)
+        by_model: DefaultDict[str, int] = defaultdict(int)
 
         for metric in recent_metrics:
             by_type[metric.metric_type.value] += 1

@@ -5,11 +5,10 @@ This module provides cost calculation and optimization utilities for
 intelligent LLM switching based on economic efficiency.
 """
 
-from typing import Dict, List, Optional, Tuple
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import json
-import os
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -243,7 +242,7 @@ class CostCalculator:
 
         return False, ""
 
-    def get_cost_summary(self) -> Dict[str, any]:
+    def get_cost_summary(self) -> Dict[str, Any]:
         """Get comprehensive cost summary."""
         if not self.cost_history:
             return {"total_cost": 0.0, "total_requests": 0}
@@ -252,14 +251,14 @@ class CostCalculator:
         total_requests = len(self.cost_history)
 
         # Cost by provider
-        provider_costs = {}
+        provider_costs: Dict[str, float] = {}
         for cost in self.cost_history:
             provider_costs[cost.provider] = (
                 provider_costs.get(cost.provider, 0.0) + cost.total_cost
             )
 
         # Cost by model
-        model_costs = {}
+        model_costs: Dict[str, float] = {}
         for cost in self.cost_history:
             model_key = f"{cost.provider}:{cost.model}"
             model_costs[model_key] = model_costs.get(model_key, 0.0) + cost.total_cost
