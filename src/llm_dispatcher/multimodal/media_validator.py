@@ -6,15 +6,13 @@ security checks, content analysis, and sanitization for safe LLM processing.
 """
 
 import base64
-import hashlib
-import mimetypes
 import io
-from typing import Dict, List, Optional, Any, Tuple, Union
+import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
-import logging
 from enum import Enum
-import re
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 try:
     from PIL import Image
@@ -24,8 +22,6 @@ except ImportError:
     IMAGE_LIBS_AVAILABLE = False
 
 try:
-    import librosa
-    import soundfile as sf
     from pydub import AudioSegment
 
     AUDIO_LIBS_AVAILABLE = True
@@ -61,7 +57,7 @@ class ValidationIssue:
     severity: ValidationSeverity
     message: str
     code: str
-    details: Dict[str, Any] = None
+    details: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -91,8 +87,8 @@ class MediaValidator:
         max_image_size_mb: int = 10,
         max_audio_size_mb: int = 25,
         max_video_size_mb: int = 100,
-        allowed_image_formats: List[str] = None,
-        allowed_audio_formats: List[str] = None,
+        allowed_image_formats: Optional[List[str]] = None,
+        allowed_audio_formats: Optional[List[str]] = None,
         security_strict: bool = True,
     ):
         self.max_image_size_mb = max_image_size_mb
@@ -279,7 +275,7 @@ class MediaValidator:
                             details={"pattern": pattern},
                         )
                     )
-        except:
+        except (UnicodeDecodeError, AttributeError):
             pass  # Binary data, skip text checks
 
         # Check for extremely large files
@@ -300,8 +296,8 @@ class MediaValidator:
         self, media_type: MediaType, data: bytes
     ) -> Tuple[List[ValidationIssue], Dict[str, Any]]:
         """Perform type-specific validation."""
-        issues = []
-        metadata = {}
+        issues: List[ValidationIssue] = []
+        metadata: Dict[str, Any] = {}
 
         if media_type == MediaType.IMAGE:
             issues, metadata = self._validate_image(data)
@@ -555,7 +551,7 @@ class MediaValidator:
                             details={"pattern": pattern},
                         )
                     )
-        except:
+        except (UnicodeDecodeError, AttributeError):
             pass
 
         return issues, metadata
@@ -610,7 +606,7 @@ class MediaValidator:
                     output = io.BytesIO()
                     image.save(output, format=image.format or "PNG")
                     return output.getvalue()
-                except:
+                except Exception:
                     pass
 
             # For other types, return original data

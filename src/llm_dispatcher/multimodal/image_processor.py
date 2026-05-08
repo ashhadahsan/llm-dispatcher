@@ -6,15 +6,36 @@ format conversion, optimization, analysis, and feature extraction.
 """
 
 import base64
-import io
 import hashlib
-from typing import Dict, List, Optional, Any, Tuple, Union
+import io
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-import logging
-from PIL import Image, ImageOps, ImageEnhance
-import numpy as np
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+
+try:
+    from PIL import Image, ImageEnhance, ImageOps
+
+    _IMAGE_AVAILABLE = True
+    _IMAGE_IMPORT_ERROR: Optional[BaseException] = None
+except ImportError as e:
+    Image = None  # type: ignore[assignment,misc]
+    ImageOps = None  # type: ignore[assignment,misc]
+    ImageEnhance = None  # type: ignore[assignment,misc]
+    _IMAGE_AVAILABLE = False
+    _IMAGE_IMPORT_ERROR = e
+
+
+def _require_image_extras() -> None:
+    if not _IMAGE_AVAILABLE:
+        raise ImportError(
+            "Image processing requires the 'image' extra. "
+            "Install with: pip install 'llm-dispatcher[image]'"
+        ) from _IMAGE_IMPORT_ERROR
+
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +87,7 @@ class ImageProcessor:
     """
 
     def __init__(self, max_size_mb: int = 10, quality_threshold: int = 85):
+        _require_image_extras()
         self.max_size_mb = max_size_mb
         self.quality_threshold = quality_threshold
 
