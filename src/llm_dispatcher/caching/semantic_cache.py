@@ -5,17 +5,36 @@ This module provides semantic similarity-based caching that can find
 cached responses for semantically similar requests, not just exact matches.
 """
 
-import asyncio
-import numpy as np
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from datetime import datetime, timedelta
 import logging
-from sentence_transformers import SentenceTransformer
-import faiss
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-from .cache_manager import CacheManager, CacheEntry
+import numpy as np
+
+try:
+    import faiss
+    from sentence_transformers import SentenceTransformer
+
+    _SEMANTIC_CACHE_AVAILABLE = True
+    _SEMANTIC_CACHE_IMPORT_ERROR: Optional[BaseException] = None
+except ImportError as e:
+    SentenceTransformer = None  # type: ignore[assignment,misc]
+    faiss = None  # type: ignore[assignment]
+    _SEMANTIC_CACHE_AVAILABLE = False
+    _SEMANTIC_CACHE_IMPORT_ERROR = e
+
 from ..core.base import TaskRequest, TaskResponse
+from .cache_manager import CacheEntry, CacheManager
+
+
+def _require_semantic_cache_extras() -> None:
+    if not _SEMANTIC_CACHE_AVAILABLE:
+        raise ImportError(
+            "Semantic caching requires the 'semantic-cache' extra. "
+            "Install with: pip install 'llm-dispatcher[semantic-cache]'"
+        ) from _SEMANTIC_CACHE_IMPORT_ERROR
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +61,7 @@ class SemanticCache:
         similarity_threshold: float = 0.85,
         model_name: str = "all-MiniLM-L6-v2",
     ):
+        _require_semantic_cache_extras()
         self.cache_manager = cache_manager
         self.similarity_threshold = similarity_threshold
 

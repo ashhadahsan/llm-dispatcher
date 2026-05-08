@@ -1,21 +1,23 @@
 """
 Advanced caching systems for LLM-Dispatcher.
 
-This module provides intelligent caching capabilities including response caching,
-semantic caching, and cache optimization strategies.
+Provides response caching and (optionally) semantic caching.
 """
 
-from .cache_manager import CacheManager
+from .cache_manager import (
+    CacheManager,
+    CachePolicy,
+    LRUPolicy,
+    SizePolicy,
+    TTLPolicy,
+)
 from .semantic_cache import SemanticCache
-from .cache_policies import CachePolicy, LRUPolicy, TTLPolicy, SizePolicy
-from .cache_optimizer import CacheOptimizer
 
 __all__ = [
     "CacheManager",
-    "SemanticCache",
     "CachePolicy",
     "LRUPolicy",
     "TTLPolicy",
     "SizePolicy",
-    "CacheOptimizer",
+    "SemanticCache",
 ]

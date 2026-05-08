@@ -5,15 +5,14 @@ This module provides comprehensive caching capabilities including response cachi
 intelligent cache policies, and cache optimization strategies.
 """
 
+import asyncio
 import hashlib
 import json
-import time
-from typing import Dict, List, Optional, Any, Union, Tuple
+import logging
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from abc import ABC, abstractmethod
-import asyncio
-import logging
+from typing import Any, Dict, List, Optional
 
 from ..core.base import TaskRequest, TaskResponse, TaskType
 
@@ -41,17 +40,14 @@ class CachePolicy(ABC):
     @abstractmethod
     def should_cache(self, request: TaskRequest, response: TaskResponse) -> bool:
         """Determine if a response should be cached."""
-        pass
 
     @abstractmethod
     def get_ttl(self, request: TaskRequest, response: TaskResponse) -> timedelta:
         """Get time-to-live for a cache entry."""
-        pass
 
     @abstractmethod
     def should_evict(self, entry: CacheEntry) -> bool:
         """Determine if a cache entry should be evicted."""
-        pass
 
 
 class LRUPolicy(CachePolicy):
