@@ -5,32 +5,26 @@ This module implements the main switching logic that makes intelligent decisions
 about which LLM to use based on performance metrics, cost optimization, and other factors.
 """
 
-import asyncio
-import time
-from typing import Dict, List, Optional, Tuple, Any, AsyncGenerator
-from dataclasses import dataclass
-from datetime import datetime, timedelta
 import logging
+import time
+from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple
 
-from .base import (
-    LLMProvider,
-    TaskRequest,
-    TaskResponse,
-    TaskType,
-    ModelInfo,
-    PerformanceMetrics,
-    Capability,
+from ..config.settings import FallbackStrategy, OptimizationStrategy, SwitchConfig
+from ..exceptions import (
+    FallbackExhaustedError,
+    ModelNotFoundError,
+    NoAvailableProvidersError,
 )
 from ..utils.benchmark_manager import BenchmarkManager
 from ..utils.cost_calculator import CostCalculator
 from ..utils.performance_monitor import PerformanceMonitor
-from ..config.settings import SwitchConfig, OptimizationStrategy, FallbackStrategy
-from ..exceptions import (
-    FallbackExhaustedError,
-    NoAvailableProvidersError,
-    CostLimitExceededError,
-    ModelNotFoundError,
-    ProviderError,
+from .base import (
+    Capability,
+    LLMProvider,
+    TaskRequest,
+    TaskResponse,
+    TaskType,
 )
 
 logger = logging.getLogger(__name__)
@@ -416,7 +410,7 @@ class LLMSwitch:
                 provider_name, model_name
             )
             return stats.success_rate
-        except:
+        except Exception:
             # Fallback to default scores
             reliability_scores = {"openai": 0.95, "anthropic": 0.93, "google": 0.90}
             return reliability_scores.get(provider_name, 0.85)
@@ -466,13 +460,16 @@ class LLMSwitch:
                 except Exception as fallback_error:
                     logger.warning(f"Fallback failed: {fallback_error}")
                     # Create a mock decision for tracking
-                    from .base import LLMDecision
 
-                    fallback_decision = LLMDecision(
+                    fallback_decision = SwitchDecision(
                         provider=fallback_provider,
                         model=fallback_model,
                         confidence=0.0,
+                        reasoning="fallback after primary failure",
+                        estimated_cost=0.0,
+                        estimated_latency=0.0,
                         fallback_options=[],
+                        decision_factors={},
                     )
                     fallback_decisions.append(fallback_decision)
                     continue
@@ -484,8 +481,8 @@ class LLMSwitch:
     async def execute_stream(
         self,
         request: TaskRequest,
-        chunk_callback: Optional[callable] = None,
-        metadata_callback: Optional[callable] = None,
+        chunk_callback: Optional[Callable] = None,
+        metadata_callback: Optional[Callable] = None,
         constraints: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[str, None]:
         """
@@ -543,11 +540,6 @@ class LLMSwitch:
             # Record final performance
             end_time = time.time()
             latency = (end_time - start_time) * 1000
-            input_tokens = provider.estimate_tokens(request.prompt)
-            cost = provider.estimate_cost(
-                decision.model, input_tokens, total_tokens - input_tokens
-            )
-
             self._record_performance(
                 decision.provider, decision.model, 1.0  # Success score
             )
@@ -604,13 +596,16 @@ class LLMSwitch:
                         f"Fallback provider {fallback_provider} also failed: {fallback_error}"
                     )
                     # Create a mock decision for tracking
-                    from .base import LLMDecision
 
-                    fallback_decision = LLMDecision(
+                    fallback_decision = SwitchDecision(
                         provider=fallback_provider,
                         model=fallback_model,
                         confidence=0.0,
+                        reasoning="fallback after primary failure",
+                        estimated_cost=0.0,
+                        estimated_latency=0.0,
                         fallback_options=[],
+                        decision_factors={},
                     )
                     fallback_decisions.append(fallback_decision)
                     continue
@@ -748,13 +743,16 @@ class LLMSwitch:
                         f"Fallback provider {fallback_provider} also failed: {fallback_error}"
                     )
                     # Create a mock decision for tracking
-                    from .base import LLMDecision
 
-                    fallback_decision = LLMDecision(
+                    fallback_decision = SwitchDecision(
                         provider=fallback_provider,
                         model=fallback_model,
                         confidence=0.0,
+                        reasoning="fallback after primary failure",
+                        estimated_cost=0.0,
+                        estimated_latency=0.0,
                         fallback_options=[],
+                        decision_factors={},
                     )
                     fallback_decisions.append(fallback_decision)
                     continue
@@ -806,17 +804,17 @@ class LLMSwitch:
 
     def _get_cost_fallback_chain(self, task_type: TaskType) -> List[Tuple[str, str]]:
         """Get fallback chain prioritizing cost efficiency."""
-        cost_rankings = self.cost_calculator.get_cost_efficiency_ranking()
-        fallback_chain = []
+        # Score every (provider, model) by cost efficiency and rank.
+        scored: List[Tuple[Tuple[str, str], float]] = []
+        for provider_name, provider in self.providers.items():
+            for model in provider.models:
+                score = self.cost_calculator.get_cost_efficiency_score(
+                    provider_name, model, performance_score=1.0
+                )
+                scored.append(((provider_name, model), score))
 
-        for model, score in cost_rankings[:3]:
-            # Find which provider has this model
-            for provider_name, provider in self.providers.items():
-                if model in provider.models:
-                    fallback_chain.append((provider_name, model))
-                    break
-
-        return fallback_chain
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [pair for pair, _ in scored[:3]]
 
     def _get_speed_fallback_chain(self, task_type: TaskType) -> List[Tuple[str, str]]:
         """Get fallback chain prioritizing speed."""
@@ -854,7 +852,7 @@ class LLMSwitch:
 
     def get_system_status(self) -> Dict[str, Any]:
         """Get overall system status and health."""
-        status = {
+        status: Dict[str, Any] = {
             "total_providers": len(self.providers),
             "enabled_providers": len(
                 [
@@ -870,9 +868,11 @@ class LLMSwitch:
             "performance_summary": self.performance_monitor.get_system_overview(),
         }
 
-        # Get health status for each provider
+        # Get health status for each provider (BaseProvider exposes it).
         for provider_name, provider in self.providers.items():
-            status["provider_health"][provider_name] = provider.get_health_status()
+            health_fn = getattr(provider, "get_health_status", None)
+            if callable(health_fn):
+                status["provider_health"][provider_name] = health_fn()
 
         return status
 

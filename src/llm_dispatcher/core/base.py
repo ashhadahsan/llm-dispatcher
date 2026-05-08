@@ -6,11 +6,11 @@ the LLM-Dispatcher package, including task types, capabilities, and provider int
 """
 
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union, AsyncGenerator, Type
-from pydantic import BaseModel, Field
-import asyncio
 from datetime import datetime
+from enum import Enum
+from typing import Any, AsyncGenerator, Dict, List, Optional, Type, Union
+
+from pydantic import BaseModel, Field
 
 
 class TaskType(str, Enum):
@@ -170,30 +170,26 @@ class LLMProvider(ABC):
     @abstractmethod
     def _initialize_models(self) -> None:
         """Initialize available models and their capabilities."""
-        pass
 
     def _initialize_performance_metrics(self) -> None:
         """Initialize performance metrics for each model."""
         # This will be overridden by specific providers with real benchmark data
         # Default implementation - do nothing
-        pass
 
     @abstractmethod
     async def generate(self, request: TaskRequest, model: str) -> TaskResponse:
         """Generate a response for the given request."""
-        pass
 
     @abstractmethod
-    async def generate_stream(
+    def generate_stream(
         self, request: TaskRequest, model: str
     ) -> AsyncGenerator[str, None]:
-        """Generate a streaming response."""
-        pass
+        """Generate a streaming response (returns an async iterator)."""
+        ...
 
     @abstractmethod
     async def get_embeddings(self, text: str, model: str) -> List[float]:
         """Get embeddings for the given text."""
-        pass
 
     def get_models_for_task(self, task_type: TaskType) -> List[str]:
         """Get models suitable for the given task type."""

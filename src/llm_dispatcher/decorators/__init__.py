@@ -5,7 +5,7 @@ This module provides decorators for easy integration of intelligent LLM dispatch
 into existing code with minimal configuration.
 """
 
-from .switch_decorator import llm_dispatcher, route, LLMSwitchDecorator
+from .switch_decorator import LLMSwitchDecorator, llm_dispatcher, route
 
 __all__ = [
     "llm_dispatcher",

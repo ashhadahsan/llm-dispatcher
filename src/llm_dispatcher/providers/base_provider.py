@@ -5,20 +5,17 @@ This module provides a base implementation of the LLMProvider interface
 with common functionality that can be shared across different providers.
 """
 
-import asyncio
-import time
-from typing import Dict, List, Optional, AsyncGenerator, Any
-from datetime import datetime
 import logging
+import time
+from datetime import datetime
+from typing import Any, AsyncGenerator, Dict, List
 
 from ..core.base import (
+    Capability,
     LLMProvider,
     TaskRequest,
     TaskResponse,
     TaskType,
-    ModelInfo,
-    PerformanceMetrics,
-    Capability,
 )
 from ..utils.benchmark_manager import BenchmarkManager
 from ..utils.token_counter import token_counter
@@ -64,7 +61,7 @@ class BaseProvider(LLMProvider):
             input_tokens = token_counter.count_tokens(
                 request.prompt, self.provider_name
             )
-            estimated_output_tokens = self._estimate_output_tokens(request)
+            self._estimate_output_tokens(request)
 
             # Make the actual API call
             response_content = await self._make_api_call(request, model)
@@ -260,7 +257,7 @@ class BaseProvider(LLMProvider):
         """Make the actual API call to the provider."""
         raise NotImplementedError("Subclasses must implement _make_api_call")
 
-    async def _make_streaming_api_call(
+    def _make_streaming_api_call(
         self, request: TaskRequest, model: str
     ) -> AsyncGenerator[str, None]:
         """Make a streaming API call to the provider."""

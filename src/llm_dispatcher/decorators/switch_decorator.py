@@ -8,16 +8,16 @@ with minimal configuration and maximum ease of use.
 import asyncio
 import functools
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Union, TypeVar, cast
 import logging
+from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
 
-from ..core.base import TaskRequest, TaskType, TaskResponse
-from ..core.switch_engine import LLMSwitch, SwitchDecision
-from ..config.settings import SwitchConfig, OptimizationStrategy
-from ..providers.openai_provider import OpenAIProvider
+from ..config.settings import OptimizationStrategy, SwitchConfig
+from ..core.base import TaskRequest, TaskResponse, TaskType
+from ..core.switch_engine import LLMSwitch
 from ..providers.anthropic_provider import AnthropicProvider
 from ..providers.google_provider import GoogleProvider
 from ..providers.grok_provider import GrokProvider
+from ..providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +203,7 @@ class LLMSwitchDecorator:
 
     def _get_constraints(self) -> Dict[str, Any]:
         """Get constraints for LLM selection."""
-        constraints = {}
+        constraints: Dict[str, Any] = {}
 
         if self.max_cost is not None:
             constraints["max_cost"] = self.max_cost
@@ -234,13 +234,13 @@ class LLMSwitchDecorator:
                 import json
 
                 return json.loads(response.content)
-            except:
+            except (ValueError, json.JSONDecodeError):
                 return {"content": response.content, "metadata": response.metadata}
         else:
             # Try to parse as the expected type
             try:
                 return return_annotation(response.content)
-            except:
+            except (ValueError, TypeError):
                 return response.content
 
 
@@ -345,7 +345,9 @@ def init(
     """
     global _global_switch
 
-    providers = {}
+    from ..core.base import LLMProvider
+
+    providers: Dict[str, LLMProvider] = {}
 
     # Initialize providers
     if openai_api_key:
@@ -532,8 +534,8 @@ def llm_stream(
     max_latency: Optional[int] = None,
     providers: Optional[List[str]] = None,
     model: Optional[str] = None,
-    chunk_callback: Optional[callable] = None,
-    metadata_callback: Optional[callable] = None,
+    chunk_callback: Optional[Callable] = None,
+    metadata_callback: Optional[Callable] = None,
     **kwargs,
 ) -> Callable[[F], F]:
     """
