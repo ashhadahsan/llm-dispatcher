@@ -5,7 +5,7 @@ This module defines custom exceptions that provide more specific error handling
 and better debugging information for LLM dispatcher operations.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 class LLMDispatcherError(Exception):
@@ -43,7 +43,7 @@ class ProviderConnectionError(ProviderError):
     def __init__(
         self,
         provider: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -57,7 +57,7 @@ class ProviderAuthenticationError(ProviderError):
     def __init__(
         self,
         provider: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -72,7 +72,7 @@ class ProviderRateLimitError(ProviderError):
         self,
         provider: str,
         retry_after: Optional[int] = None,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -87,7 +87,7 @@ class ProviderQuotaExceededError(ProviderError):
     def __init__(
         self,
         provider: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -102,7 +102,7 @@ class ProviderTimeoutError(ProviderError):
         self,
         provider: str,
         timeout: Optional[float] = None,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -117,7 +117,7 @@ class ProviderServiceUnavailableError(ProviderError):
     def __init__(
         self,
         provider: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -148,7 +148,7 @@ class ModelNotFoundError(ModelError):
         self,
         model: str,
         provider: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -164,7 +164,7 @@ class ModelUnsupportedError(ModelError):
         model: str,
         provider: str,
         capability: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -182,7 +182,7 @@ class ModelContextLengthExceededError(ModelError):
         provider: str,
         requested_tokens: int,
         max_tokens: int,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -215,7 +215,7 @@ class InvalidConfigurationError(ConfigurationError):
         self,
         config_key: str,
         value: Any,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -230,7 +230,7 @@ class MissingConfigurationError(ConfigurationError):
     def __init__(
         self,
         config_key: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -326,7 +326,9 @@ class FallbackExhaustedError(LLMDispatcherError):
 class NoAvailableProvidersError(LLMDispatcherError):
     """Raised when no providers are available."""
 
-    def __init__(self, message: str = None, details: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, message: Optional[str] = None, details: Optional[Dict[str, Any]] = None
+    ):
         if message is None:
             message = "No providers are currently available"
         super().__init__(message, "NO_AVAILABLE_PROVIDERS_ERROR", details)
@@ -352,7 +354,7 @@ class CacheMissError(CacheError):
     def __init__(
         self,
         cache_key: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -366,7 +368,7 @@ class CacheStorageError(CacheError):
     def __init__(
         self,
         cache_key: str,
-        message: str = None,
+        message: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ):
         if message is None:
@@ -399,7 +401,9 @@ class ContentFilterError(SecurityError):
 class UnauthorizedAccessError(SecurityError):
     """Raised when access is unauthorized."""
 
-    def __init__(self, message: str = None, details: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, message: Optional[str] = None, details: Optional[Dict[str, Any]] = None
+    ):
         if message is None:
             message = "Unauthorized access"
         super().__init__(message, "UNAUTHORIZED_ACCESS_ERROR", details)
