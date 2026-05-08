@@ -5,31 +5,29 @@ This module implements the Google provider with actual benchmark scores
 from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 """
 
-import asyncio
-from typing import Dict, List, Optional, AsyncGenerator, Any
+from typing import Any, AsyncGenerator, Dict, List, Optional
+
 import google.generativeai as genai
-from google.generativeai import GenerativeModel
+from google.generativeai import GenerativeModel  # noqa: F401  re-exported for patching
 from pydantic import BaseModel
 
-from .base_provider import BaseProvider
 from ..core.base import (
-    TaskRequest,
-    TaskResponse,
-    TaskType,
+    Capability,
     ModelInfo,
     PerformanceMetrics,
-    Capability,
+    TaskRequest,
+    TaskType,
 )
 from ..exceptions import (
-    ProviderConnectionError,
-    ProviderAuthenticationError,
-    ProviderRateLimitError,
-    ProviderQuotaExceededError,
-    ProviderTimeoutError,
+    ModelContextLengthExceededError,
     ModelNotFoundError,
     ModelUnsupportedError,
-    ModelContextLengthExceededError,
+    ProviderAuthenticationError,
+    ProviderConnectionError,
+    ProviderQuotaExceededError,
+    ProviderRateLimitError,
 )
+from .base_provider import BaseProvider
 
 
 class GoogleProvider(BaseProvider):
@@ -379,11 +377,11 @@ class GoogleProvider(BaseProvider):
         except Exception as e:
             raise ProviderConnectionError("google", f"Unexpected embeddings error: {e}")
 
-    def _prepare_content(self, request: TaskRequest) -> list:
+    def _prepare_content(self, request: TaskRequest) -> List[Dict[str, Any]]:
         """Prepare content for Google API using the new format."""
         # Use the standard google.generativeai format
 
-        content_parts = []
+        content_parts: List[Dict[str, Any]] = []
 
         # Add images if present
         if request.images:
@@ -400,8 +398,9 @@ class GoogleProvider(BaseProvider):
                             }
                         }
                     )
-                elif isinstance(image_data, bytes):
-                    # Raw image bytes
+                elif isinstance(image_data, bytes):  # type: ignore[unreachable]
+                    # Defensive: TaskRequest.images is typed as List[str], but this
+                    # branch keeps bytes-callers from silently breaking.
                     content_parts.append(
                         {
                             "inline_data": {
@@ -426,8 +425,9 @@ class GoogleProvider(BaseProvider):
                             }
                         }
                     )
-                elif isinstance(audio_data, bytes):
-                    # Raw audio bytes
+                elif isinstance(audio_data, bytes):  # type: ignore[unreachable]
+                    # Defensive: TaskRequest.audio is typed as str, but this
+                    # branch keeps bytes-callers from silently breaking.
                     content_parts.append(
                         {
                             "inline_data": {

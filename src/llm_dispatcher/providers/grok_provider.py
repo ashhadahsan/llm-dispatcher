@@ -5,11 +5,28 @@ This module implements the Grok provider with actual benchmark scores
 from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 """
 
-import asyncio
-from typing import Dict, List, Optional, AsyncGenerator, Any
-import requests
 import json
+from typing import Any, AsyncGenerator, Dict, List
+
+import requests
 from pydantic import BaseModel
+
+from ..core.base import (
+    Capability,
+    ModelInfo,
+    TaskRequest,
+    TaskType,
+)
+from ..exceptions import (
+    ModelContextLengthExceededError,
+    ModelNotFoundError,
+    ModelUnsupportedError,
+    ProviderAuthenticationError,
+    ProviderConnectionError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
+)
+from .base_provider import BaseProvider
 
 
 # Mock Grok class for testing compatibility
@@ -18,27 +35,6 @@ class Grok:
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-
-
-from .base_provider import BaseProvider
-from ..core.base import (
-    TaskRequest,
-    TaskResponse,
-    TaskType,
-    ModelInfo,
-    PerformanceMetrics,
-    Capability,
-)
-from ..exceptions import (
-    ProviderConnectionError,
-    ProviderAuthenticationError,
-    ProviderRateLimitError,
-    ProviderQuotaExceededError,
-    ProviderTimeoutError,
-    ModelNotFoundError,
-    ModelUnsupportedError,
-    ModelContextLengthExceededError,
-)
 
 
 class GrokProvider(BaseProvider):
@@ -141,7 +137,7 @@ class GrokProvider(BaseProvider):
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
-            api_params = {
+            api_params: Dict[str, Any] = {
                 "model": model,
                 "messages": messages,
                 "max_tokens": request.max_tokens or self.models[model].max_tokens,
@@ -157,10 +153,10 @@ class GrokProvider(BaseProvider):
             ]:
                 if (
                     hasattr(request.structured_output, "__bases__")
-                    and BaseModel in request.structured_output.__bases__
+                    and BaseModel in request.structured_output.__bases__  # type: ignore[union-attr]
                 ):
                     # It's a Pydantic model class - convert to JSON schema
-                    schema = request.structured_output.model_json_schema()
+                    schema = request.structured_output.model_json_schema()  # type: ignore[union-attr]
                     api_params["response_format"] = {
                         "type": "json_schema",
                         "json_schema": {
@@ -247,7 +243,7 @@ class GrokProvider(BaseProvider):
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
-            api_params = {
+            api_params: Dict[str, Any] = {
                 "model": model,
                 "messages": messages,
                 "max_tokens": request.max_tokens or self.models[model].max_tokens,
@@ -324,7 +320,7 @@ class GrokProvider(BaseProvider):
                 "Content-Type": "application/json",
             }
 
-            api_params = {
+            api_params: Dict[str, Any] = {
                 "model": model,
                 "input": text,
             }
@@ -374,7 +370,7 @@ class GrokProvider(BaseProvider):
 
     def _prepare_messages(self, request: TaskRequest) -> List[Dict[str, Any]]:
         """Prepare messages for Grok API."""
-        messages = [{"role": "user", "content": request.prompt}]
+        messages: List[Dict[str, Any]] = [{"role": "user", "content": request.prompt}]
 
         # Handle images if present
         if request.images:

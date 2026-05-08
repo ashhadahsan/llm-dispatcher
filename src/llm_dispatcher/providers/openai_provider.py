@@ -5,31 +5,28 @@ This module implements the OpenAI provider with actual benchmark scores
 from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 """
 
-import asyncio
-from typing import Dict, List, Optional, AsyncGenerator, Any
-import openai
-from pydantic import BaseModel
-from openai import AsyncOpenAI
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from .base_provider import BaseProvider
+import openai
+from openai import AsyncOpenAI
+from pydantic import BaseModel
+
 from ..core.base import (
-    TaskRequest,
-    TaskResponse,
-    TaskType,
-    ModelInfo,
-    PerformanceMetrics,
     Capability,
+    ModelInfo,
+    TaskRequest,
+    TaskType,
 )
 from ..exceptions import (
-    ProviderConnectionError,
-    ProviderAuthenticationError,
-    ProviderRateLimitError,
-    ProviderQuotaExceededError,
-    ProviderTimeoutError,
+    ModelContextLengthExceededError,
     ModelNotFoundError,
     ModelUnsupportedError,
-    ModelContextLengthExceededError,
+    ProviderAuthenticationError,
+    ProviderConnectionError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
 )
+from .base_provider import BaseProvider
 
 
 class OpenAIProvider(BaseProvider):
@@ -261,7 +258,7 @@ class OpenAIProvider(BaseProvider):
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
-            api_params = {
+            api_params: Dict[str, Any] = {
                 "model": model,
                 "messages": messages,
             }
@@ -303,10 +300,10 @@ class OpenAIProvider(BaseProvider):
             if request.structured_output and not model.startswith("gpt-5"):
                 if (
                     hasattr(request.structured_output, "__bases__")
-                    and BaseModel in request.structured_output.__bases__
+                    and BaseModel in request.structured_output.__bases__  # type: ignore[union-attr]
                 ):
                     # It's a Pydantic model class - convert to JSON schema
-                    schema = request.structured_output.model_json_schema()
+                    schema = request.structured_output.model_json_schema()  # type: ignore[union-attr]
                     # Ensure additionalProperties is set to false
                     if "additionalProperties" not in schema:
                         schema["additionalProperties"] = False
@@ -444,10 +441,10 @@ class OpenAIProvider(BaseProvider):
             if request.structured_output and not model.startswith("gpt-5"):
                 if (
                     hasattr(request.structured_output, "__bases__")
-                    and BaseModel in request.structured_output.__bases__
+                    and BaseModel in request.structured_output.__bases__  # type: ignore[union-attr]
                 ):
                     # It's a Pydantic model class - convert to JSON schema
-                    schema = request.structured_output.model_json_schema()
+                    schema = request.structured_output.model_json_schema()  # type: ignore[union-attr]
                     # Ensure additionalProperties is set to false
                     if "additionalProperties" not in schema:
                         schema["additionalProperties"] = False
@@ -570,7 +567,7 @@ class OpenAIProvider(BaseProvider):
 
     def _prepare_messages(self, request: TaskRequest) -> List[Dict[str, Any]]:
         """Prepare messages for OpenAI API."""
-        messages = []
+        messages: List[Dict[str, Any]] = []
 
         # Add system message if structured output is requested
         if request.structured_output:
@@ -581,7 +578,7 @@ class OpenAIProvider(BaseProvider):
             messages.append(system_message)
 
         # Prepare user message
-        user_content = []
+        user_content: List[Dict[str, Any]] = []
 
         # Add text content
         if request.prompt:

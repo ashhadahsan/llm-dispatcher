@@ -5,32 +5,29 @@ This module implements the Anthropic provider with actual benchmark scores
 from credible sources including MMLU, HumanEval, GPQA, AIME, etc.
 """
 
-import asyncio
-import json
-from typing import Dict, List, Optional, AsyncGenerator, Any
+from typing import Any, AsyncGenerator, Dict, List, Optional
+
 import anthropic
 from anthropic import AsyncAnthropic
 from pydantic import BaseModel
 
-from .base_provider import BaseProvider
 from ..core.base import (
-    TaskRequest,
-    TaskResponse,
-    TaskType,
+    Capability,
     ModelInfo,
     PerformanceMetrics,
-    Capability,
+    TaskRequest,
+    TaskType,
 )
 from ..exceptions import (
-    ProviderConnectionError,
-    ProviderAuthenticationError,
-    ProviderRateLimitError,
-    ProviderQuotaExceededError,
-    ProviderTimeoutError,
+    ModelContextLengthExceededError,
     ModelNotFoundError,
     ModelUnsupportedError,
-    ModelContextLengthExceededError,
+    ProviderAuthenticationError,
+    ProviderConnectionError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
 )
+from .base_provider import BaseProvider
 
 
 class AnthropicProvider(BaseProvider):
@@ -291,7 +288,7 @@ class AnthropicProvider(BaseProvider):
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
-            api_params = {
+            api_params: Dict[str, Any] = {
                 "model": model_info.name,  # Use the actual model name from ModelInfo
                 "max_tokens": request.max_tokens or model_info.max_tokens,
                 "temperature": request.temperature,
@@ -315,10 +312,10 @@ class AnthropicProvider(BaseProvider):
 
                 if (
                     hasattr(request.structured_output, "__bases__")
-                    and BaseModel in request.structured_output.__bases__
+                    and BaseModel in request.structured_output.__bases__  # type: ignore[union-attr]
                 ):
                     # It's a Pydantic model class - convert to JSON schema
-                    schema = request.structured_output.model_json_schema()
+                    schema = request.structured_output.model_json_schema()  # type: ignore[union-attr]
                     tool_definition["input_schema"] = schema
                 elif isinstance(request.structured_output, dict):
                     # It's a JSON schema dict
@@ -337,7 +334,7 @@ class AnthropicProvider(BaseProvider):
                 # Add instruction to use the tool
                 tool_instruction = "\n\nPlease use the structured_output tool to provide your response in the specified format."
                 if "system" in api_params:
-                    api_params["system"] += tool_instruction
+                    api_params["system"] = api_params["system"] + tool_instruction
                 else:
                     api_params["system"] = tool_instruction
 
@@ -403,7 +400,7 @@ class AnthropicProvider(BaseProvider):
             messages = self._prepare_messages(request)
 
             # Prepare API parameters
-            api_params = {
+            api_params: Dict[str, Any] = {
                 "model": model_info.name,  # Use the actual model name from ModelInfo
                 "max_tokens": request.max_tokens or model_info.max_tokens,
                 "temperature": request.temperature,
@@ -451,16 +448,13 @@ class AnthropicProvider(BaseProvider):
     async def _make_embeddings_call(self, text: str, model: str) -> List[float]:
         """Make embeddings API call to Anthropic."""
         try:
-            # Anthropic doesn't have a separate embeddings API
-            # We'll use a workaround by making a completion call
-            response = await self.client.messages.create(
-                model="claude-3-haiku",  # Use cheapest model for embeddings
+            # Anthropic doesn't have a separate embeddings API.
+            # Placeholder: callers should use a dedicated embeddings provider.
+            await self.client.messages.create(
+                model="claude-3-haiku",
                 max_tokens=1,
                 messages=[{"role": "user", "content": f"Embed this text: {text}"}],
             )
-
-            # This is a placeholder - in practice, you'd need a different approach
-            # for embeddings with Anthropic
             return [0.0] * 1536  # Standard embedding dimension
 
         except Exception as e:
@@ -470,10 +464,10 @@ class AnthropicProvider(BaseProvider):
 
     def _prepare_messages(self, request: TaskRequest) -> List[Dict[str, Any]]:
         """Prepare messages for Anthropic API."""
-        messages = []
+        messages: List[Dict[str, Any]] = []
 
         # Prepare user message
-        user_content = []
+        user_content: List[Dict[str, Any]] = []
 
         # Add text content
         if request.prompt:
